@@ -235,7 +235,7 @@ export default function StudioPage() {
           <select
             value={selectedActorId}
             onChange={(e) => setSelectedActorId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 text-gray-900"
           >
             <option value="">Select an actor...</option>
             {actors.map((actor) => (
@@ -278,7 +278,7 @@ export default function StudioPage() {
           <select
             value={selectedGarmentId}
             onChange={(e) => setSelectedGarmentId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 text-gray-900"
           >
             <option value="">Select a garment...</option>
             {garments.map((garment) => (
@@ -402,7 +402,7 @@ export default function StudioPage() {
               <select
                 value={selectedBoardId}
                 onChange={(e) => setSelectedBoardId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
               >
                 <option value="">Select a board...</option>
                 {boards.map((board) => (

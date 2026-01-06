@@ -172,7 +172,7 @@ export default function GarmentDetailPage() {
             <select
               value={uploadImageType}
               onChange={(e) => setUploadImageType(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
             >
               <option value="flat_lay">Flat Lay</option>
               <option value="on_model">On Model</option>
@@ -211,7 +211,7 @@ export default function GarmentDetailPage() {
               <select
                 value={image.image_type || ''}
                 onChange={(e) => handleImageTypeChange(image.id, e.target.value)}
-                className="w-full px-2 py-1 bg-white border border-gray-300 rounded text-xs"
+                className="w-full px-2 py-1 bg-white border border-gray-300 rounded text-xs text-gray-900"
                 onClick={(e) => e.stopPropagation()}
               >
                 <option value="">Select type...</option>
