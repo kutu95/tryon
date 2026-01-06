@@ -36,7 +36,9 @@ export async function getCurrentProfile() {
 export async function requireAuth() {
   const user = await getCurrentUser()
   if (!user) {
-    redirect('/login')
+    // In API routes, redirect() throws NEXT_REDIRECT which breaks fetch
+    // Instead, throw an error that can be caught and converted to a 401 response
+    throw new Error('Unauthorized')
   }
   return user
 }

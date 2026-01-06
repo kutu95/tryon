@@ -4,7 +4,10 @@ import { requireAuth } from '@/lib/auth'
 
 export async function GET() {
   try {
-    await requireAuth()
+    const user = await requireAuth()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const supabase = await createClient()
     
     // Get all actors
@@ -41,6 +44,10 @@ export async function GET() {
     return NextResponse.json(actorsWithPhotos)
   } catch (error: any) {
     console.error('API error:', error)
+    // Handle unauthorized errors with 401 instead of 500
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     return NextResponse.json({ 
       error: error.message || 'Internal server error',
       details: error.details || error.hint || null
