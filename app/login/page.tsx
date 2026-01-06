@@ -42,19 +42,11 @@ export default function LoginPage() {
         setError(result.error.message)
         setLoading(false)
       } else {
-        // Login successful - verify session is established
-        console.log('Login successful, verifying session...')
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        if (sessionError || !session) {
-          console.error('Session not established:', sessionError)
-          setError('Failed to establish session. Please try again.')
-          setLoading(false)
-          return
-        }
-        
-        console.log('Session verified, redirecting to /studio...')
-        // Use router.replace like cashbook does - it's more reliable than window.location
+        // Login successful - redirect immediately
+        // The middleware will verify authentication on the next request
+        console.log('Login successful, redirecting to /studio...')
+        setLoading(false)
+        // Use router.replace like cashbook does
         router.replace('/studio')
       }
     } catch (err: any) {
