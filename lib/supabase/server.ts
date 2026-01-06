@@ -4,9 +4,10 @@ import { cookies } from 'next/headers'
 export async function createClient() {
   const cookieStore = await cookies()
 
-  // Use localhost for server-side requests since we're on the same machine
-  // This avoids going through the tunnel unnecessarily
-  const supabaseUrl = process.env.SUPABASE_URL || 'http://localhost:54321'
+  // For auth validation, use the public URL (tunnel) to match where cookies were set
+  // For database queries, we can still use localhost for performance
+  // But auth cookies need to be validated against the same domain they were created for
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'http://localhost:54321'
   
   return createServerClient(
     supabaseUrl,
