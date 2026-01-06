@@ -42,13 +42,23 @@ export default function LoginPage() {
         setError(result.error.message)
         setLoading(false)
       } else {
-        // Login successful - wait a moment for cookies to be set, then redirect
-        console.log('Login successful, waiting for session to be established...')
-        // Give Supabase time to set cookies
-        await new Promise(resolve => setTimeout(resolve, 500))
-        console.log('Redirecting to /studio...')
+        // Login successful - verify session is established
+        console.log('Login successful, verifying session...')
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError || !session) {
+          console.error('Session not established:', sessionError)
+          setError('Failed to establish session. Please try again.')
+          setLoading(false)
+          return
+        }
+        
+        console.log('Session verified, redirecting to /studio...')
         // Force a full page reload to ensure middleware sees the authenticated user
-        window.location.href = '/studio'
+        // Use a small delay to ensure cookies are fully set
+        setTimeout(() => {
+          window.location.href = '/studio'
+        }, 200)
       }
     } catch (err: any) {
       console.error('Login error:', err)
