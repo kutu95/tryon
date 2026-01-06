@@ -46,8 +46,11 @@ export default function LoginPage() {
         // The middleware will verify authentication on the next request
         console.log('Login successful, redirecting to /studio...')
         setLoading(false)
-        // Use router.replace like cashbook does
-        router.replace('/studio')
+        // Wait a moment for cookies to be fully set, then redirect
+        // Use window.location for a full page reload to ensure cookies are sent
+        setTimeout(() => {
+          window.location.href = '/studio'
+        }, 300)
       }
     } catch (err: any) {
       console.error('Login error:', err)

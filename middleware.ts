@@ -34,8 +34,19 @@ export async function middleware(request: NextRequest) {
   const { data: { session }, error: sessionError } = await supabase.auth.getSession()
   const { data: { user }, error: userError } = await supabase.auth.getUser()
 
+  // Debug logging
+  console.log('[Middleware]', {
+    pathname: request.nextUrl.pathname,
+    hasSession: !!session,
+    hasUser: !!user,
+    sessionError: sessionError?.message,
+    userError: userError?.message,
+    cookies: request.cookies.getAll().map(c => c.name).join(', ')
+  })
+
   // Protect routes that require authentication
   if ((!user || userError) && !request.nextUrl.pathname.startsWith('/login')) {
+    console.log('[Middleware] Redirecting to login - no user found')
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
