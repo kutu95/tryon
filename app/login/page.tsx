@@ -18,9 +18,11 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      console.log('Attempting login with URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+      
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Login request timed out. Please check if Supabase is accessible.')), 10000)
+        setTimeout(() => reject(new Error('Login request timed out after 10 seconds. Please check if Supabase auth endpoint is accessible via the tunnel.')), 10000)
       )
 
       const signInPromise = supabase.auth.signInWithPassword({
@@ -28,10 +30,16 @@ export default function LoginPage() {
         password,
       })
 
-      const { error } = await Promise.race([signInPromise, timeoutPromise]) as any
+      const result = await Promise.race([signInPromise, timeoutPromise]) as any
+      
+      console.log('Login result:', { 
+        hasError: !!result.error, 
+        errorMessage: result.error?.message,
+        hasUser: !!result.data?.user 
+      })
 
-      if (error) {
-        setError(error.message)
+      if (result.error) {
+        setError(result.error.message)
         setLoading(false)
       } else {
         router.push('/studio')
@@ -39,7 +47,12 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error('Login error:', err)
-      setError(err.message || 'Failed to sign in. Please check your connection.')
+      console.error('Error details:', {
+        message: err.message,
+        name: err.name,
+        stack: err.stack
+      })
+      setError(err.message || 'Failed to sign in. Please check your connection and ensure Supabase auth endpoint is accessible.')
       setLoading(false)
     }
   }
