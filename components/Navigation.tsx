@@ -50,6 +50,7 @@ export function Navigation() {
     { href: '/actors', label: 'Actors' },
     { href: '/garments', label: 'Garments' },
     { href: '/boards', label: 'Look Boards' },
+    { href: '/account', label: 'Account' },
   ]
 
   return (

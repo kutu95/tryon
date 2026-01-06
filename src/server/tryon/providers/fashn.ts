@@ -240,5 +240,61 @@ export class FashnProvider implements TryOnProvider {
       };
     }
   }
+
+  /**
+   * Get account credit balance from FASHN AI
+   * Returns information about total credits, subscription credits, and on-demand credits
+   * Documentation: https://docs.fashn.ai/utility-endpoints/credits
+   */
+  async getAccountCredits(): Promise<{
+    total?: number;
+    subscription?: number;
+    onDemand?: number;
+    error?: string;
+  }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/credits`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { message: errorText || response.statusText };
+        }
+        console.error('FASHN API getAccountCredits error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: error,
+          errorText: errorText,
+        });
+        return {
+          error: `FASHN API error (${response.status}): ${error.message || error.detail || errorText || response.statusText}`,
+        };
+      }
+
+      const data = await response.json();
+      console.log('[FASHN] Credits response:', JSON.stringify(data, null, 2));
+
+      // Parse the response - structure may vary, so we'll handle common patterns
+      return {
+        total: data.total ?? data.total_credits ?? data.balance ?? data.credits,
+        subscription: data.subscription ?? data.subscription_credits,
+        onDemand: data.on_demand ?? data.onDemand ?? data.on_demand_credits,
+      };
+    } catch (error: any) {
+      console.error('FASHN API getAccountCredits error:', error);
+      return {
+        error: error.message || 'Failed to get account credits',
+      };
+    }
+  }
 }
 
