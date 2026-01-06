@@ -6,8 +6,10 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
-  // Use localhost for server-side requests since we're on the same machine
-  const supabaseUrl = process.env.SUPABASE_URL || 'http://localhost:54321'
+  // For middleware, we need to use the public URL (tunnel) for auth validation
+  // because cookies are set via the tunnel URL and need to be validated against the same domain
+  // Use the public URL for auth, but we can still use localhost for database queries if needed
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'http://localhost:54321'
   
   const supabase = createServerClient(
     supabaseUrl,
@@ -30,18 +32,28 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Refresh the session first - this ensures cookies are properly read and validated
+  // This is important when cookies are set via a different domain (tunnel) but validated via localhost
+  await supabase.auth.getSession()
+  
   // Get both session and user - similar to cashbook pattern
   const { data: { session }, error: sessionError } = await supabase.auth.getSession()
   const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-  // Debug logging
+  // Debug logging with detailed cookie info
+  const allCookies = request.cookies.getAll()
+  const authCookie = allCookies.find(c => c.name.includes('auth-token'))
   console.log('[Middleware]', {
     pathname: request.nextUrl.pathname,
     hasSession: !!session,
     hasUser: !!user,
     sessionError: sessionError?.message,
     userError: userError?.message,
-    cookies: request.cookies.getAll().map(c => c.name).join(', ')
+    cookieCount: allCookies.length,
+    cookieNames: allCookies.map(c => c.name).join(', '),
+    authCookieName: authCookie?.name,
+    authCookieValueLength: authCookie?.value?.length || 0,
+    supabaseUrl: supabaseUrl
   })
 
   // Protect routes that require authentication
