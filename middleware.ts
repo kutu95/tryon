@@ -56,8 +56,12 @@ export async function middleware(request: NextRequest) {
     supabaseUrl: supabaseUrl
   })
 
+  // Exclude public API routes from authentication
+  const publicRoutes = ['/api/storage/proxy']
+  const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
+  
   // Protect routes that require authentication
-  if ((!user || userError) && !request.nextUrl.pathname.startsWith('/login')) {
+  if ((!user || userError) && !request.nextUrl.pathname.startsWith('/login') && !isPublicRoute) {
     console.log('[Middleware] Redirecting to login - no user found')
     const url = request.nextUrl.clone()
     url.pathname = '/login'
