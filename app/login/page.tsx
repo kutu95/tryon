@@ -17,17 +17,30 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Login request timed out. Please check if Supabase is accessible.')), 10000)
+      )
 
-    if (error) {
-      setError(error.message)
+      const signInPromise = supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      const { error } = await Promise.race([signInPromise, timeoutPromise]) as any
+
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+      } else {
+        router.push('/studio')
+        router.refresh()
+      }
+    } catch (err: any) {
+      console.error('Login error:', err)
+      setError(err.message || 'Failed to sign in. Please check your connection.')
       setLoading(false)
-    } else {
-      router.push('/studio')
-      router.refresh()
     }
   }
 
