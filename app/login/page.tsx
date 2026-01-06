@@ -42,8 +42,10 @@ export default function LoginPage() {
         setError(result.error.message)
         setLoading(false)
       } else {
-        router.push('/studio')
-        router.refresh()
+        // Login successful - redirect to studio
+        setLoading(false)
+        // Use window.location for more reliable redirect
+        window.location.href = '/studio'
       }
     } catch (err: any) {
       console.error('Login error:', err)
