@@ -33,6 +33,23 @@ export function createClient() {
             return fetch(url, newOptions)
           }
           // For auth and other requests, don't add the header
+          // Add error handling and logging for auth requests
+          if (urlString.includes('/auth/v1')) {
+            console.log('[Client] Auth request to:', urlString)
+            try {
+              const response = await fetch(url, options)
+              console.log('[Client] Auth response status:', response.status)
+              return response
+            } catch (error: any) {
+              console.error('[Client] Auth request error:', error)
+              console.error('[Client] Error details:', {
+                message: error.message,
+                name: error.name,
+                cause: error.cause
+              })
+              throw error
+            }
+          }
           return fetch(url, options)
         },
       },
