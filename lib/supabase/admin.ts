@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
 export function createAdminClient() {
+  // Use localhost for server-side requests since we're on the same machine
+  const supabaseUrl = process.env.SUPABASE_URL || 'http://localhost:54321'
+  
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseUrl,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       auth: {

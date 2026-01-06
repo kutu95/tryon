@@ -4,8 +4,12 @@ import { cookies } from 'next/headers'
 export async function createClient() {
   const cookieStore = await cookies()
 
+  // Use localhost for server-side requests since we're on the same machine
+  // This avoids going through the tunnel unnecessarily
+  const supabaseUrl = process.env.SUPABASE_URL || 'http://localhost:54321'
+  
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseUrl,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {

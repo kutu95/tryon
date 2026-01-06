@@ -6,8 +6,11 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
+  // Use localhost for server-side requests since we're on the same machine
+  const supabaseUrl = process.env.SUPABASE_URL || 'http://localhost:54321'
+  
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseUrl,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
