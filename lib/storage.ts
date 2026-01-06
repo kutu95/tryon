@@ -11,7 +11,15 @@ export async function getSignedUrl(bucket: string, path: string, expiresIn: numb
     return null
   }
   
-  return data.signedUrl
+  // Replace localhost URL with public URL if needed
+  // Signed URLs from Supabase use the same base URL as the client that created them
+  const signedUrl = data.signedUrl
+  const publicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (publicUrl && signedUrl.includes('localhost')) {
+    return signedUrl.replace(/https?:\/\/localhost:\d+/, publicUrl)
+  }
+  
+  return signedUrl
 }
 
 export async function uploadFile(bucket: string, path: string, file: File | Buffer): Promise<string | null> {
