@@ -36,6 +36,11 @@ export function Navigation() {
     router.push('/login')
   }
 
+  // Don't show navigation on login page
+  if (pathname === '/login') {
+    return null
+  }
+
   if (!user) {
     return null
   }
