@@ -16,7 +16,7 @@ export function getTryOnProvider(): TryOnProvider {
   }
 }
 
-export { TryOnProvider } from './types';
+export type { TryOnProvider } from './types';
 export { StubProvider } from './stub';
 export { FashnProvider } from './fashn';
 

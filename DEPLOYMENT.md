@@ -146,7 +146,7 @@ nano ecosystem.config.js
 ```javascript
 module.exports = {
   apps: [{
-    name: 'tryon-app',
+    name: 'tryon',
     script: 'npm',
     args: 'start',
     cwd: '/path/to/tryon',
@@ -174,7 +174,7 @@ pm2 startup  # Follow instructions to enable on boot
 1. Check PM2 status:
    ```bash
    pm2 status
-   pm2 logs tryon-app
+   pm2 logs tryon
    ```
 
 2. Test locally on server:
@@ -194,7 +194,7 @@ If Supabase is on a different machine, update the URL accordingly.
 ## Troubleshooting
 
 ### App won't start
-- Check PM2 logs: `pm2 logs tryon-app`
+- Check PM2 logs: `pm2 logs tryon`
 - Verify environment variables are set
 - Check if port 3000 is available: `lsof -i :3000`
 
@@ -228,7 +228,7 @@ cd /path/to/tryon
 git pull
 npm install  # If dependencies changed
 npm run build
-pm2 restart tryon-app
+pm2 restart tryon
 ```
 
 ## Security Notes

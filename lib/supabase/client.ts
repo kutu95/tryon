@@ -6,7 +6,7 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       global: {
-        fetch: async (url, options = {}) => {
+        fetch: async (url: RequestInfo | URL, options: RequestInit = {}) => {
           const urlString = typeof url === 'string' ? url : url.toString()
           
           // Only add Accept-Profile header for REST API requests (database queries)

@@ -7,7 +7,7 @@ set -e
 
 APP_DIR="/opt/tryon"  # Adjust this path as needed
 REPO_URL="https://github.com/YOUR_USERNAME/tryon-app.git"  # Update with your repo URL
-APP_NAME="tryon-app"
+APP_NAME="tryon"
 
 echo "Deploying Tryon App to server..."
 

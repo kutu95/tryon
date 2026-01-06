@@ -98,7 +98,7 @@ sudo systemctl restart cloudflared
 ## Step 5: Verify
 
 1. Check app: `pm2 status`
-2. Check logs: `pm2 logs tryon-app`
+2. Check logs: `pm2 logs tryon`
 3. Test: Open https://tryon.margies.app
 
 Done! 🎉

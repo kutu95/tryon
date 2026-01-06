@@ -25,7 +25,7 @@ export async function createClient() {
         },
       },
       global: {
-        fetch: async (url, options = {}) => {
+        fetch: async (url: RequestInfo | URL, options: RequestInit = {}) => {
           const urlString = typeof url === 'string' ? url : url.toString()
           console.log('[Server Fetch Override] Called with URL:', urlString)
           

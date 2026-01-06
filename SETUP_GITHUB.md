@@ -114,7 +114,7 @@ Make sure these are set correctly:
 
 Restart the app:
 ```bash
-pm2 restart tryon-app
+pm2 restart tryon
 ```
 
 ## Updating the App
@@ -132,6 +132,6 @@ cd /opt/tryon
 git pull
 npm install  # If dependencies changed
 npm run build
-pm2 restart tryon-app
+pm2 restart tryon
 ```
 

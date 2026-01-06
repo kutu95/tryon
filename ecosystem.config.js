@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'tryon-app',
+    name: 'tryon',
     script: 'npm',
     args: 'start',
     instances: 1,
