@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
 import { downloadFile } from '@/lib/storage'
 
 /**
  * Proxy endpoint to serve storage files publicly for external APIs
  * This allows FASHN and other services to access images that are in private buckets
+ * Note: This is intentionally public - no auth required as it's for external API access
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth()
     const searchParams = request.nextUrl.searchParams
     const bucket = searchParams.get('bucket')
     const path = searchParams.get('path')
