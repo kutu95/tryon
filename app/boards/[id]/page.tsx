@@ -32,6 +32,7 @@ export default function BoardDetailPage() {
   const [items, setItems] = useState<LookItem[]>([])
   const [loading, setLoading] = useState(true)
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (params.id) {
@@ -102,11 +103,16 @@ export default function BoardDetailPage() {
         {items.map((item) => (
           <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden">
             {signedUrls[item.id] ? (
-              <img
-                src={signedUrls[item.id]}
-                alt={item.label || 'Try-on result'}
-                className="w-full h-64 object-cover"
-              />
+              <div
+                className="w-full h-64 bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setSelectedImageUrl(signedUrls[item.id])}
+              >
+                <img
+                  src={signedUrls[item.id]}
+                  alt={item.label || 'Try-on result'}
+                  className="w-full h-full object-contain"
+                />
+              </div>
             ) : (
               <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
                 No image
@@ -123,6 +129,42 @@ export default function BoardDetailPage() {
           </div>
         ))}
       </div>
+
+      {/* Full-size image modal */}
+      {selectedImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+          onClick={() => setSelectedImageUrl(null)}
+        >
+          <div className="relative max-w-7xl max-h-full">
+            <button
+              onClick={() => setSelectedImageUrl(null)}
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full p-2 transition-colors"
+              aria-label="Close"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <img
+              src={selectedImageUrl}
+              alt="Full size"
+              className="max-w-full max-h-[90vh] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
 
       {items.length === 0 && (
         <div className="text-center py-8 text-gray-500">
