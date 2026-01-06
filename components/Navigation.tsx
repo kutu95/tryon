@@ -13,10 +13,23 @@ export function Navigation() {
   const supabase = createClient()
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    // Don't check auth on login page
+    if (pathname === '/login') {
+      return
+    }
+    
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error) {
+        console.error('Navigation auth check error:', error)
+        setUser(null)
+        return
+      }
       setUser(user)
+    }).catch((error) => {
+      console.error('Navigation auth check failed:', error)
+      setUser(null)
     })
-  }, [supabase])
+  }, [supabase, pathname])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
