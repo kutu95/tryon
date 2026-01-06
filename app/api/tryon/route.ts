@@ -82,7 +82,18 @@ export async function POST(request: NextRequest) {
     const actorImageUrl = `${baseUrl}/api/storage/proxy?bucket=actors&path=${encodeURIComponent(actorPhoto.storage_path)}`
     const garmentImageUrl = `${baseUrl}/api/storage/proxy?bucket=garments&path=${encodeURIComponent(garmentImage.storage_path)}`
     
-    console.log('Generated proxy URLs:', { actorImageUrl, garmentImageUrl, baseUrl })
+    console.log('[Try-on] Generated proxy URLs:', { 
+      actorImageUrl, 
+      garmentImageUrl, 
+      baseUrl,
+      actorPhotoPath: actorPhoto.storage_path,
+      garmentImagePath: garmentImage.storage_path
+    })
+    
+    // Verify URLs are proxy URLs, not signed URLs
+    if (actorImageUrl.includes('/storage/v1/object/sign') || garmentImageUrl.includes('/storage/v1/object/sign')) {
+      console.error('[Try-on] ERROR: Proxy URLs contain signed URL pattern!', { actorImageUrl, garmentImageUrl })
+    }
     
     // Submit to provider
     const provider = getTryOnProvider()
