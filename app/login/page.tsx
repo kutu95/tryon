@@ -42,15 +42,28 @@ export default function LoginPage() {
         setError(result.error.message)
         setLoading(false)
       } else {
-        // Login successful - redirect immediately
-        // The middleware will verify authentication on the next request
-        console.log('Login successful, redirecting to /studio...')
+        // Login successful - refresh session to ensure cookies are set
+        console.log('Login successful, refreshing session...')
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.getSession()
+        
+        if (refreshError) {
+          console.error('Error refreshing session:', refreshError)
+          setError('Login succeeded but session refresh failed. Please try again.')
+          setLoading(false)
+          return
+        }
+        
+        if (!refreshedSession) {
+          console.error('No session after refresh')
+          setError('Login succeeded but no session found. Please try again.')
+          setLoading(false)
+          return
+        }
+        
+        console.log('Session refreshed, redirecting to /studio...')
         setLoading(false)
-        // Wait a moment for cookies to be fully set, then redirect
-        // Use window.location for a full page reload to ensure cookies are sent
-        setTimeout(() => {
-          window.location.href = '/studio'
-        }, 300)
+        // Use router.replace like cashbook does - it should work now that session is refreshed
+        router.replace('/studio')
       }
     } catch (err: any) {
       console.error('Login error:', err)
