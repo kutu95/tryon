@@ -7,8 +7,6 @@ export const metadata: Metadata = {
   description: "2D virtual try-on for costume styling",
 };
 
-import { Navigation } from "@/components/Navigation";
-
 export default function RootLayout({
   children,
 }: Readonly<{
