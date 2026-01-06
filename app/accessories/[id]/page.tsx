@@ -1,0 +1,316 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+
+interface Accessory {
+  id: string
+  name: string
+  type?: string
+  notes?: string
+}
+
+interface AccessoryImage {
+  id: string
+  storage_path: string
+  image_type?: string
+  tags: string[]
+}
+
+export default function AccessoryDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const [accessory, setAccessory] = useState<Accessory | null>(null)
+  const [images, setImages] = useState<AccessoryImage[]>([])
+  const [loading, setLoading] = useState(true)
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
+  const [uploadImageType, setUploadImageType] = useState<string>('flat_lay')
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (params.id) {
+      fetchAccessory()
+      fetchImages()
+    }
+  }, [params.id])
+
+  const fetchAccessory = async () => {
+    try {
+      const response = await fetch(`/api/accessories/${params.id}`)
+      const data = await response.json()
+      setAccessory(data)
+    } catch (error) {
+      console.error('Error fetching accessory:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchImages = async () => {
+    try {
+      const response = await fetch(`/api/accessories/${params.id}/images`)
+      const data = await response.json()
+      setImages(data)
+      
+      // Get signed URLs for all images
+      const urls: Record<string, string> = {}
+      for (const image of data) {
+        const urlResponse = await fetch(`/api/storage/signed-url?bucket=accessories&path=${encodeURIComponent(image.storage_path)}`)
+        if (urlResponse.ok) {
+          const { url } = await urlResponse.json()
+          urls[image.id] = url
+        }
+      }
+      setSignedUrls(urls)
+    } catch (error) {
+      console.error('Error fetching images:', error)
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    const fileArray = Array.from(files)
+
+    try {
+      // Upload all files
+      const uploadPromises = fileArray.map(async (file) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('image_type', uploadImageType)
+
+        const response = await fetch(`/api/accessories/${params.id}/images`, {
+          method: 'POST',
+          body: formData,
+        })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(`Failed to upload ${file.name}: ${error.error || 'Unknown error'}`)
+        }
+        
+        return response.json()
+      })
+
+      await Promise.all(uploadPromises)
+      fetchImages()
+      
+      // Reset the file input
+      e.target.value = ''
+    } catch (error: any) {
+      console.error('Error uploading images:', error)
+      alert(`Error uploading images: ${error.message || 'Unknown error'}`)
+    }
+  }
+
+  const handleImageTypeChange = async (imageId: string, newType: string) => {
+    try {
+      const response = await fetch(`/api/accessories/${params.id}/images/${imageId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_type: newType }),
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update image type')
+      }
+      
+      fetchImages()
+    } catch (error: any) {
+      console.error('Error updating image type:', error)
+      alert(`Error updating image type: ${error.message || 'Unknown error'}`)
+    }
+  }
+
+  const handleDeleteImage = async (imageId: string) => {
+    if (!confirm('Are you sure you want to delete this image?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/accessories/${params.id}/images/${imageId}`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete image')
+      }
+      
+      fetchImages()
+      // Remove from signedUrls
+      setSignedUrls(prev => {
+        const newUrls = { ...prev }
+        delete newUrls[imageId]
+        return newUrls
+      })
+    } catch (error: any) {
+      console.error('Error deleting image:', error)
+      alert(`Error deleting image: ${error.message || 'Unknown error'}`)
+    }
+  }
+
+  if (loading) {
+    return <div className="text-center py-8">Loading...</div>
+  }
+
+  if (!accessory) {
+    return <div className="text-center py-8">Accessory not found</div>
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <button
+          onClick={() => router.back()}
+          className="text-indigo-600 hover:text-indigo-800 mb-4"
+        >
+          ← Back to Accessories
+        </button>
+        <h1 className="text-3xl font-bold">{accessory.name}</h1>
+        {accessory.type && (
+          <span className="inline-block px-3 py-1 text-sm bg-indigo-100 text-indigo-800 rounded mt-2">
+            {accessory.type}
+          </span>
+        )}
+        {accessory.notes && (
+          <p className="text-gray-600 mt-2">{accessory.notes}</p>
+        )}
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Upload Image
+        </label>
+        <div className="flex gap-4 items-end">
+          <div className="flex-1">
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFileUpload}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+            />
+          </div>
+          <div className="w-48">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Image Type
+            </label>
+            <select
+              value={uploadImageType}
+              onChange={(e) => setUploadImageType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+            >
+              <option value="flat_lay">Flat Lay</option>
+              <option value="on_model">On Model</option>
+              <option value="detail">Detail</option>
+              <option value="front">Front</option>
+              <option value="back">Back</option>
+              <option value="side">Side</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {images.map((image) => (
+          <div key={image.id} className="relative border border-gray-200 rounded-lg overflow-hidden group">
+            {signedUrls[image.id] ? (
+              <div
+                className="w-full h-64 bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setSelectedImageUrl(signedUrls[image.id])}
+              >
+                <img
+                  src={signedUrls[image.id]}
+                  alt={`${accessory.name} image`}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            ) : (
+              <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
+                Loading...
+              </div>
+            )}
+            <div className="absolute top-2 right-2 flex gap-2">
+              {image.image_type && (
+                <span className="bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                  {image.image_type}
+                </span>
+              )}
+              <button
+                onClick={() => handleDeleteImage(image.id)}
+                className="bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                title="Delete image"
+              >
+                Delete
+              </button>
+            </div>
+            <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <select
+                value={image.image_type || ''}
+                onChange={(e) => handleImageTypeChange(image.id, e.target.value)}
+                className="w-full px-2 py-1 bg-white border border-gray-300 rounded text-xs text-gray-900"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <option value="">Select type...</option>
+                <option value="flat_lay">Flat Lay</option>
+                <option value="on_model">On Model</option>
+                <option value="detail">Detail</option>
+                <option value="front">Front</option>
+                <option value="back">Back</option>
+                <option value="side">Side</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {images.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          No images yet. Upload an image to get started.
+        </div>
+      )}
+
+      {/* Full-size image modal */}
+      {selectedImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+          onClick={() => setSelectedImageUrl(null)}
+        >
+          <div className="relative max-w-7xl max-h-full">
+            <button
+              onClick={() => setSelectedImageUrl(null)}
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full p-2 transition-colors"
+              aria-label="Close"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <img
+              src={selectedImageUrl}
+              alt="Full size"
+              className="max-w-full max-h-[90vh] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
