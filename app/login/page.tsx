@@ -42,9 +42,12 @@ export default function LoginPage() {
         setError(result.error.message)
         setLoading(false)
       } else {
-        // Login successful - redirect to studio
-        setLoading(false)
-        // Use window.location for more reliable redirect
+        // Login successful - wait a moment for cookies to be set, then redirect
+        console.log('Login successful, waiting for session to be established...')
+        // Give Supabase time to set cookies
+        await new Promise(resolve => setTimeout(resolve, 500))
+        console.log('Redirecting to /studio...')
+        // Force a full page reload to ensure middleware sees the authenticated user
         window.location.href = '/studio'
       }
     } catch (err: any) {
