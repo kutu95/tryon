@@ -123,15 +123,31 @@ export class FashnProvider implements TryOnProvider {
     error?: string;
   }> {
     try {
-      // FASHN status endpoint - may need to be adjusted based on actual API
-      // Try common patterns: /status/{id}, /predictions/{id}, /jobs/{id}
-      const response = await fetch(`${this.baseUrl}/status/${params.jobId}`, {
+      // FASHN API status endpoint - based on app.fashn.ai/api/requests pattern
+      // Try /requests/{id} first, then fallback to /status/{id}
+      let response: Response;
+      let data: any;
+      
+      // Try /requests/{id} endpoint first
+      response = await fetch(`https://api.fashn.ai/v1/requests/${params.jobId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
       });
+
+      if (!response.ok) {
+        // If /requests/{id} fails, try /status/{id}
+        console.log(`[FASHN] /requests/${params.jobId} returned ${response.status}, trying /status/${params.jobId}`);
+        response = await fetch(`${this.baseUrl}/status/${params.jobId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -146,31 +162,33 @@ export class FashnProvider implements TryOnProvider {
           statusText: response.statusText,
           error: error,
           errorText: errorText,
-          url: `${this.baseUrl}/status/${params.jobId}`,
+          jobId: params.jobId,
         });
         throw new Error(`FASHN API error (${response.status}): ${error.message || error.detail || errorText || response.statusText}`);
       }
 
-      const data = await response.json();
+      data = await response.json();
+      console.log('[FASHN] Status response:', JSON.stringify(data, null, 2));
 
-      // Map Replicate/FASHN status to our status
-      // Replicate statuses: starting, processing, succeeded, failed, canceled
+      // Map FASHN status to our status
       let status: 'queued' | 'running' | 'succeeded' | 'failed';
       
-      if (data.status === 'succeeded') {
+      if (data.status === 'succeeded' || data.status === 'completed' || data.status === 'done') {
         status = 'succeeded';
-      } else if (data.status === 'failed' || data.status === 'canceled') {
+      } else if (data.status === 'failed' || data.status === 'error' || data.status === 'canceled') {
         status = 'failed';
-      } else if (data.status === 'processing' || data.status === 'running') {
+      } else if (data.status === 'processing' || data.status === 'running' || data.status === 'in_progress') {
         status = 'running';
       } else {
-        // starting, queued, etc.
+        // starting, queued, pending, etc.
         status = 'queued';
       }
 
-      // Extract result URL from output
-      // Replicate returns output as an array of URLs or a single URL
+      // Extract result URL from response
+      // FASHN results are typically at: https://cdn.fashn.ai/{id}/output_0.png
       let resultUrl: string | undefined;
+      
+      // Check various possible fields for the result URL
       if (data.output) {
         if (Array.isArray(data.output) && data.output.length > 0) {
           resultUrl = data.output[0];
@@ -180,6 +198,23 @@ export class FashnProvider implements TryOnProvider {
           resultUrl = data.output.url;
         }
       }
+      
+      // If no output found, construct URL from job ID (FASHN pattern: cdn.fashn.ai/{id}/output_0.png)
+      if (!resultUrl && status === 'succeeded' && params.jobId) {
+        // Try constructing the URL based on FASHN's CDN pattern
+        resultUrl = `https://cdn.fashn.ai/${params.jobId}/output_0.png`;
+        console.log('[FASHN] Constructed result URL from job ID:', resultUrl);
+      }
+      
+      // Also check other possible fields
+      if (!resultUrl) {
+        if (data.result_url) resultUrl = data.result_url;
+        else if (data.image_url) resultUrl = data.image_url;
+        else if (data.url) resultUrl = data.url;
+        else if (data.result) resultUrl = data.result;
+      }
+
+      console.log('[FASHN] Extracted result URL:', resultUrl);
 
       // Extract error message if failed
       let error: string | undefined;
@@ -198,6 +233,7 @@ export class FashnProvider implements TryOnProvider {
       };
     } catch (error: any) {
       console.error('FASHN API status error:', error);
+      console.error('Error stack:', error.stack);
       return {
         status: 'failed',
         error: error.message || 'Failed to get try-on status',

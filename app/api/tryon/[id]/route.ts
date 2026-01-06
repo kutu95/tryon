@@ -29,16 +29,28 @@ export async function GET(
       const status = await provider.getTryOnStatus({ jobId: job.provider_job_id })
       
       if (status.status === 'succeeded' && status.resultUrl) {
+        console.log('[Try-on Status] Downloading result from:', status.resultUrl)
         // Download result and upload to storage
-        const response = await fetch(status.resultUrl)
-        if (response.ok) {
+        try {
+          const response = await fetch(status.resultUrl)
+          if (!response.ok) {
+            console.error('[Try-on Status] Failed to download result:', {
+              status: response.status,
+              statusText: response.statusText,
+              url: status.resultUrl
+            })
+            throw new Error(`Failed to download result: ${response.status} ${response.statusText}`)
+          }
+          
           const blob = await response.blob()
           const buffer = Buffer.from(await blob.arrayBuffer())
           const resultPath = `results/${job.id}.jpg`
           
+          console.log('[Try-on Status] Uploading result to storage:', resultPath)
           const uploadedPath = await uploadFile('tryons', resultPath, buffer)
           
           if (uploadedPath) {
+            console.log('[Try-on Status] Result uploaded successfully:', uploadedPath)
             await supabase
               .from('tryon_jobs')
               .update({
@@ -50,7 +62,12 @@ export async function GET(
             
             job.status = 'succeeded'
             job.result_storage_path = uploadedPath
+          } else {
+            console.error('[Try-on Status] Failed to upload result to storage')
           }
+        } catch (downloadError: any) {
+          console.error('[Try-on Status] Error downloading/uploading result:', downloadError)
+          // Don't fail the request, but log the error
         }
       } else if (status.status === 'failed') {
         await supabase
