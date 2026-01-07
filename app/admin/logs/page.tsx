@@ -16,7 +16,6 @@ interface AuditLog {
   user?: {
     id: string
     display_name?: string
-    email?: string
     role?: string
   }
 }
@@ -187,7 +186,7 @@ export default function AdminLogsPage() {
                       {log.user ? (
                         <div>
                           <div className="font-medium">{log.user.display_name || 'Unknown'}</div>
-                          <div className="text-xs text-gray-500">{log.user.email || log.user_id}</div>
+                          <div className="text-xs text-gray-500 font-mono">{log.user_id?.substring(0, 8)}...</div>
                         </div>
                       ) : (
                         <span className="text-gray-400">System</span>

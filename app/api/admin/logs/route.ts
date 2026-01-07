@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       .from('audit_log')
       .select(`
         *,
-        user:profiles!user_id(id, display_name, email, role)
+        user:profiles!user_id(id, display_name, role)
       `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
