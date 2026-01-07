@@ -58,6 +58,8 @@ export interface TryOnResponse {
   results: TryOnResult[]
   requestId: string
   duration?: number
+  jobId?: string  // For async jobs
+  isAsync?: boolean  // Indicates if this is an async job that needs polling
 }
 
 // Error types

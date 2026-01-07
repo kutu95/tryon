@@ -178,13 +178,24 @@ export async function runTryOn(request: TryOnRequest): Promise<TryOnResponse> {
         createdAt: new Date().toISOString(),
         requestId: data.id || requestId,
       })
-    } else if (data.id || data.job_id) {
+    }
+    
+    // Check if this is an async job (has job ID but no immediate results)
+    const jobId = data.id || data.job_id || data.prediction_id
+    if (jobId && results.length === 0) {
       // Async job - return job ID for polling
-      throw {
-        code: 'API_ERROR' as const,
-        message: 'Async job created. Use getTryOnStatus to poll for results.',
-        details: { jobId: data.id || data.job_id }
-      } as TryOnError
+      console.log('[FASHN] Async job created:', {
+        jobId,
+        requestId: data.id || requestId,
+      })
+      
+      return {
+        results: [],
+        requestId: data.id || requestId,
+        duration,
+        jobId,
+        isAsync: true,
+      }
     }
     
     if (results.length === 0) {
@@ -205,6 +216,7 @@ export async function runTryOn(request: TryOnRequest): Promise<TryOnResponse> {
       results,
       requestId: data.id || requestId,
       duration,
+      isAsync: false,
     }
   } catch (error: any) {
     const duration = Date.now() - startTime
@@ -228,7 +240,7 @@ export async function runTryOn(request: TryOnRequest): Promise<TryOnResponse> {
         message: 'Request timed out. Please try again.',
         details: error
       } as TryOnError
-      }
+    }
     
     throw {
       code: 'UNKNOWN' as const,

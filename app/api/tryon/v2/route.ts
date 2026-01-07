@@ -89,9 +89,63 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime
     console.log('[API/tryon/v2] runTryOn completed:', {
       resultsCount: result.results.length,
+      isAsync: result.isAsync,
+      jobId: result.jobId,
       duration,
     })
     
+    // Handle async jobs (need to poll for results)
+    if (result.isAsync && result.jobId && body.actor_photo_id && body.garment_image_id) {
+      // Create a tryon_job record with status 'running' for async polling
+      const { data: job, error: jobError } = await supabase
+        .from('tryon_jobs')
+        .insert({
+          actor_photo_id: body.actor_photo_id,
+          garment_image_id: body.garment_image_id,
+          provider: 'fashn',
+          status: 'running',
+          provider_job_id: result.jobId,
+          settings: {
+            ...tryOnRequest,
+            seed: tryOnRequest.seed,
+          },
+          created_by: user.id,
+        })
+        .select()
+        .single()
+      
+      if (jobError) {
+        console.error('[API/tryon/v2] Error creating async job record:', jobError)
+        throw jobError
+      }
+      
+      // Log audit event
+      const metadata = getRequestMetadata(request)
+      await logAuditEvent({
+        user_id: user.id,
+        event_type: 'tryon_created',
+        resource_type: 'tryon_job',
+        resource_id: job.id,
+        details: {
+          provider: 'fashn',
+          status: 'running',
+          provider_job_id: result.jobId,
+          isAsync: true,
+        },
+        ...metadata,
+      })
+      
+      // Return job ID for polling
+      return NextResponse.json({
+        jobId: job.id,
+        providerJobId: result.jobId,
+        status: 'running',
+        isAsync: true,
+        message: 'Job created. Poll /api/tryon/[id] for status.',
+      }, { status: 202 }) // 202 Accepted for async operations
+    }
+    
+    // Handle synchronous results
     // Create try-on job records for each result (if using old format)
     if (body.actor_photo_id && body.garment_image_id) {
       const jobs: Array<{ id: string; [key: string]: any }> = []
