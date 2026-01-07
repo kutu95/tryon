@@ -7,7 +7,6 @@ import { requireRole } from '@/lib/auth'
 export async function GET() {
   try {
     await requireRole(['admin'])
-    const supabase = await createClient()
     const adminSupabase = createAdminClient()
     
     // Get all users from auth.users (handle pagination)
@@ -35,8 +34,8 @@ export async function GET() {
       }
     }
     
-    // Get all profiles
-    const { data: profiles, error: profilesError } = await supabase
+    // Get all profiles using admin client to bypass RLS
+    const { data: profiles, error: profilesError } = await adminSupabase
       .from('profiles')
       .select('*')
     
@@ -100,9 +99,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Create or update profile with specified role
-    const supabase = await createClient()
-    const { data: profile, error: profileError } = await supabase
+    // Create or update profile with specified role using admin client
+    const { data: profile, error: profileError } = await adminSupabase
       .from('profiles')
       .upsert({
         id: userData.user.id,

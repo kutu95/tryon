@@ -10,7 +10,7 @@ export async function PUT(
 ) {
   try {
     await requireRole(['admin'])
-    const supabase = await createClient()
+    const adminSupabase = createAdminClient() // Use admin client to bypass RLS
     const body = await request.json()
     
     const { role, display_name } = body
@@ -22,7 +22,7 @@ export async function PUT(
       )
     }
     
-    // Update profile
+    // Update profile using admin client (bypasses RLS)
     const updateData: any = {
       updated_at: new Date().toISOString(),
     }
@@ -35,7 +35,7 @@ export async function PUT(
       updateData.display_name = display_name
     }
     
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await adminSupabase
       .from('profiles')
       .update(updateData)
       .eq('id', params.id)
@@ -45,7 +45,7 @@ export async function PUT(
     if (profileError) {
       // If profile doesn't exist, create it
       if (profileError.code === 'PGRST116') {
-        const { data: newProfile, error: createError } = await supabase
+        const { data: newProfile, error: createError } = await adminSupabase
           .from('profiles')
           .insert({
             id: params.id,
