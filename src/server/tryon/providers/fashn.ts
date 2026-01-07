@@ -1,4 +1,5 @@
 import { TryOnProvider } from './types';
+import { getFashnApiKey } from '@/lib/fashn-api-key';
 
 /**
  * FASHN AI provider for virtual try-on
@@ -10,17 +11,19 @@ import { TryOnProvider } from './types';
  * - Base URL: https://api.fashn.ai/v1/
  */
 export class FashnProvider implements TryOnProvider {
-  private apiKey: string;
   private baseUrl: string = 'https://api.fashn.ai/v1';
 
   constructor() {
-    const apiKey = process.env.FASHN_API_KEY;
+    // API key is now fetched from database on each request
+    // This allows it to be updated without restarting the server
+  }
+
+  private async getApiKey(): Promise<string> {
+    const apiKey = await getFashnApiKey();
     if (!apiKey) {
-      console.error('FASHN_API_KEY not found in environment variables');
-      throw new Error('FASHN_API_KEY environment variable is required');
+      throw new Error('FASHN_API_KEY not found. Please configure it in the Account page (admin only).');
     }
-    this.apiKey = apiKey;
-    console.log('FashnProvider initialized with API key:', apiKey.substring(0, 10) + '...');
+    return apiKey;
   }
 
   async submitTryOn(params: {
@@ -33,11 +36,13 @@ export class FashnProvider implements TryOnProvider {
     isAsync?: boolean;
   }> {
     try {
+      const apiKey = await this.getApiKey();
+      
       // FASHN API uses /v1/run endpoint with model_name and inputs
       const response = await fetch(`${this.baseUrl}/run`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -123,6 +128,8 @@ export class FashnProvider implements TryOnProvider {
     error?: string;
   }> {
     try {
+      const apiKey = await this.getApiKey();
+      
       // FASHN API status endpoint - based on app.fashn.ai/api/requests pattern
       // Try /requests/{id} first, then fallback to /status/{id}
       let response: Response;
@@ -132,7 +139,7 @@ export class FashnProvider implements TryOnProvider {
       response = await fetch(`https://api.fashn.ai/v1/requests/${params.jobId}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
       });
@@ -143,7 +150,7 @@ export class FashnProvider implements TryOnProvider {
         response = await fetch(`${this.baseUrl}/status/${params.jobId}`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
+            'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
         });
@@ -253,10 +260,12 @@ export class FashnProvider implements TryOnProvider {
     error?: string;
   }> {
     try {
+      const apiKey = await this.getApiKey();
+      
       const response = await fetch(`${this.baseUrl}/credits`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
       });
