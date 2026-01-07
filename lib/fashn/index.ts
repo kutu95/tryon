@@ -5,6 +5,7 @@
  * with support for all optional parameters and extensibility hooks.
  */
 
+import { randomInt } from 'crypto'
 import { getFashnApiKey } from '../fashn-api-key'
 import { TryOnRequest, TryOnRequestSchema, TryOnResponse, TryOnResult, TryOnError } from './types'
 import { ProductToModelRequest, ModelSwapRequest } from './types'
@@ -16,20 +17,12 @@ const FASHN_BASE_URL = process.env.FASHN_API_BASE_URL || 'https://api.fashn.ai/v
 
 /**
  * Generate a cryptographically random seed if none provided
+ * This function is only used server-side (in API routes)
  */
 function generateSeed(): number {
   // Generate a random integer in a safe range (0 to 2^31 - 1)
-  // Use Node.js crypto in server context, browser crypto in client context
-  if (typeof window === 'undefined') {
-    // Server-side: use Node.js crypto
-    const crypto = require('crypto')
-    return crypto.randomInt(0, 2147483647)
-  } else {
-    // Client-side: use Web Crypto API
-    const array = new Uint32Array(1)
-    crypto.getRandomValues(array)
-    return array[0] % 2147483647
-  }
+  // Always use Node.js crypto since this is server-side only
+  return randomInt(0, 2147483647)
 }
 
 /**

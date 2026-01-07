@@ -10,9 +10,12 @@ export const runtime = 'nodejs' // Ensure Node.js runtime
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[API/tryon/v2] Request received')
     const user = await requireAuth()
+    console.log('[API/tryon/v2] User authenticated:', user.id)
     const supabase = await createClient()
     const body = await request.json()
+    console.log('[API/tryon/v2] Request body keys:', Object.keys(body))
     
     // Support both old format (actor_photo_id/garment_image_id) and new format (direct images)
     let modelImageUrl: string
@@ -75,9 +78,19 @@ export async function POST(request: NextRequest) {
     }
     
     // Call FASHN service
+    console.log('[API/tryon/v2] Calling runTryOn with params:', {
+      category: tryOnRequest.category,
+      mode: tryOnRequest.mode,
+      num_samples: tryOnRequest.num_samples,
+      hasSeed: !!tryOnRequest.seed,
+    })
     const startTime = Date.now()
     const result = await runTryOn(tryOnRequest)
     const duration = Date.now() - startTime
+    console.log('[API/tryon/v2] runTryOn completed:', {
+      resultsCount: result.results.length,
+      duration,
+    })
     
     // Create try-on job records for each result (if using old format)
     if (body.actor_photo_id && body.garment_image_id) {
@@ -157,6 +170,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result, { status: 201 })
   } catch (error: any) {
     console.error('[API/tryon/v2] Error:', error)
+    console.error('[API/tryon/v2] Error stack:', error.stack)
+    console.error('[API/tryon/v2] Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+    })
     
     // Handle TryOnError
     if (error.code) {
