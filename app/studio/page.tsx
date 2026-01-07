@@ -72,6 +72,7 @@ export default function StudioPage() {
   // Two-phase workflow state
   const [session, setSession] = useState<TryOnSession | null>(null)
   const [loading, setLoading] = useState(false)
+  const [loadingStatus, setLoadingStatus] = useState<string | null>(null) // Status message during async operations
   const [error, setError] = useState<string | null>(null)
   
   // Advanced controls state
@@ -301,6 +302,8 @@ export default function StudioPage() {
       // Handle async job (202 Accepted)
       if (response.status === 202 && data.jobId && data.isAsync) {
         console.log('[Studio] Async job created, polling for results:', data.jobId)
+        setLoadingStatus('Job created, waiting for processing...')
+        
         // Poll for results
         const pollInterval = setInterval(async () => {
           try {
@@ -308,9 +311,16 @@ export default function StudioPage() {
             if (statusResponse.ok) {
               const job = await statusResponse.json()
               
-              if (job.status === 'succeeded' && job.result_url) {
+              // Update status message based on job status
+              if (job.status === 'queued') {
+                setLoadingStatus('Job queued, waiting to start...')
+              } else if (job.status === 'running') {
+                setLoadingStatus('Processing try-on... This may take a moment.')
+              } else if (job.status === 'succeeded' && job.result_url) {
                 clearInterval(pollInterval)
                 pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
+                setLoadingStatus('Processing complete!')
+                
                 // Convert job to result format
                 const result: TryOnResult = {
                   imageUrl: job.result_url,
@@ -332,15 +342,18 @@ export default function StudioPage() {
                   timestamps: { preview: new Date().toISOString() },
                 })
                 setLoading(false)
+                setLoadingStatus(null)
               } else if (job.status === 'failed') {
                 clearInterval(pollInterval)
                 pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
                 setError(job.error_message || 'Try-on generation failed')
                 setLoading(false)
+                setLoadingStatus(null)
               }
             }
           } catch (pollError) {
             console.error('Error polling job status:', pollError)
+            setLoadingStatus('Checking status...')
           }
         }, 2000) // Poll every 2 seconds
         
@@ -446,6 +459,8 @@ export default function StudioPage() {
       // Handle async job (202 Accepted)
       if (response.status === 202 && data.jobId && data.isAsync) {
         console.log('[Studio] Async job created for finalize, polling for results:', data.jobId)
+        setLoadingStatus('Finalizing with high quality...')
+        
         // Poll for results
         const pollInterval = setInterval(async () => {
           try {
@@ -453,9 +468,16 @@ export default function StudioPage() {
             if (statusResponse.ok) {
               const job = await statusResponse.json()
               
-              if (job.status === 'succeeded' && job.result_url) {
+              // Update status message based on job status
+              if (job.status === 'queued') {
+                setLoadingStatus('Job queued, waiting to start...')
+              } else if (job.status === 'running') {
+                setLoadingStatus('Processing final high-quality result...')
+              } else if (job.status === 'succeeded' && job.result_url) {
                 clearInterval(pollInterval)
                 pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
+                setLoadingStatus('Finalization complete!')
+                
                 // Convert job to result format
                 const finalResult: TryOnResult = {
                   imageUrl: job.result_url,
@@ -478,15 +500,18 @@ export default function StudioPage() {
                   },
                 })
                 setLoading(false)
+                setLoadingStatus(null)
               } else if (job.status === 'failed') {
                 clearInterval(pollInterval)
                 pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
                 setError(job.error_message || 'Try-on generation failed')
                 setLoading(false)
+                setLoadingStatus(null)
               }
             }
           } catch (pollError) {
             console.error('Error polling job status:', pollError)
+            setLoadingStatus('Checking status...')
           }
         }, 2000) // Poll every 2 seconds
         
@@ -498,6 +523,7 @@ export default function StudioPage() {
           pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
           setError('Request timed out. Please try again.')
           setLoading(false)
+          setLoadingStatus(null)
         }, 60000)
         
         pollingIntervalsRef.current.push(timeoutId as any)
@@ -524,9 +550,11 @@ export default function StudioPage() {
           finalized: new Date().toISOString(),
         },
       })
+      setLoadingStatus(null)
     } catch (err: any) {
       console.error('Error finalizing:', err)
       setError(err.message || 'Failed to finalize')
+      setLoadingStatus(null)
     } finally {
       setLoading(false)
     }
@@ -915,7 +943,7 @@ export default function StudioPage() {
           className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading 
-            ? 'Generating Preview...' 
+            ? (loadingStatus || 'Generating Preview...')
             : `Fast Preview (${advancedSettings.num_samples || 1} ${(advancedSettings.num_samples || 1) === 1 ? 'sample' : 'samples'})`}
         </button>
 
@@ -924,7 +952,7 @@ export default function StudioPage() {
           disabled={loading || !selectedActorPhotoId || !selectedGarmentImageId}
           className="px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Generating...' : 'Generate (Legacy)'}
+          {loading ? (loadingStatus || 'Generating...') : 'Generate (Legacy)'}
         </button>
 
         {session && session.previewResults.length > 0 && (
