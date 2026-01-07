@@ -191,9 +191,14 @@ export default function GarmentsPage() {
                     By <span className="font-medium text-gray-700">{garment.creator.display_name || 'Unknown'}</span>
                   </p>
                 )}
-                <p className="text-xs text-gray-400">
-                  Created {new Date(garment.created_at).toLocaleDateString()}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-400">
+                    Created {new Date(garment.created_at).toLocaleDateString()}
+                  </p>
+                  <span className="text-xs text-gray-500">
+                    {garment.image_count || 0} {garment.image_count === 1 ? 'image' : 'images'}
+                  </span>
+                </div>
               </div>
             </div>
           </Link>

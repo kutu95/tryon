@@ -13,6 +13,7 @@ interface Actor {
     id: string
     storage_path: string
   } | null
+  photo_count?: number
 }
 
 export default function ActorsPage() {
@@ -162,9 +163,14 @@ export default function ActorsPage() {
                 {actor.notes && (
                   <p className="text-sm text-gray-600 mb-2 line-clamp-2">{actor.notes}</p>
                 )}
-                <p className="text-xs text-gray-400">
-                  Created {new Date(actor.created_at).toLocaleDateString()}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-400">
+                    Created {new Date(actor.created_at).toLocaleDateString()}
+                  </p>
+                  <span className="text-xs text-gray-500">
+                    {actor.photo_count || 0} {actor.photo_count === 1 ? 'photo' : 'photos'}
+                  </span>
+                </div>
               </div>
             </div>
           </Link>

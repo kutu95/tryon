@@ -11,7 +11,7 @@ export async function GET() {
     }
     const supabase = await createClient()
     
-    const { data, error } = await supabase
+    const { data: boards, error } = await supabase
       .from('look_boards')
       .select(`
         *,
@@ -21,7 +21,27 @@ export async function GET() {
     
     if (error) throw error
     
-    return NextResponse.json(data)
+    // Get item counts for all boards
+    const boardIds = boards.map(b => b.id)
+    const { data: allItems } = await supabase
+      .from('look_items')
+      .select('look_board_id')
+      .in('look_board_id', boardIds)
+    
+    // Create a map of board_id -> item count
+    const itemCountMap = new Map()
+    allItems?.forEach(item => {
+      const count = itemCountMap.get(item.look_board_id) || 0
+      itemCountMap.set(item.look_board_id, count + 1)
+    })
+    
+    // Add item count to each board
+    const boardsWithCounts = boards.map(board => ({
+      ...board,
+      item_count: itemCountMap.get(board.id) || 0
+    }))
+    
+    return NextResponse.json(boardsWithCounts)
   } catch (error: any) {
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

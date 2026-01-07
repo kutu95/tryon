@@ -22,7 +22,7 @@ export async function GET() {
       throw error
     }
     
-    // Get primary photos for all actors
+    // Get primary photos and photo counts for all actors
     const actorIds = actors.map(a => a.id)
     const { data: primaryPhotos } = await supabase
       .from('actor_photos')
@@ -30,16 +30,29 @@ export async function GET() {
       .in('actor_id', actorIds)
       .eq('is_primary', true)
     
-    // Create a map of actor_id -> primary photo
+    // Get photo counts for all actors
+    const { data: allPhotos } = await supabase
+      .from('actor_photos')
+      .select('actor_id')
+      .in('actor_id', actorIds)
+    
+    // Create maps
     const photoMap = new Map()
     primaryPhotos?.forEach(photo => {
       photoMap.set(photo.actor_id, photo)
     })
     
-    // Add primary photo to each actor
+    const photoCountMap = new Map()
+    allPhotos?.forEach(photo => {
+      const count = photoCountMap.get(photo.actor_id) || 0
+      photoCountMap.set(photo.actor_id, count + 1)
+    })
+    
+    // Add primary photo and photo count to each actor
     const actorsWithPhotos = actors.map(actor => ({
       ...actor,
-      primary_photo: photoMap.get(actor.id) || null
+      primary_photo: photoMap.get(actor.id) || null,
+      photo_count: photoCountMap.get(actor.id) || 0
     }))
     
     return NextResponse.json(actorsWithPhotos)

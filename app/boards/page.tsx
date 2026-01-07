@@ -13,6 +13,7 @@ interface LookBoard {
     display_name: string
     role: string
   }
+  item_count?: number
 }
 
 export default function BoardsPage() {
@@ -130,9 +131,14 @@ export default function BoardsPage() {
                   Created by <span className="font-medium text-gray-700">{board.creator.display_name || 'Unknown'}</span>
                 </p>
               )}
-              <p className="text-xs text-gray-400">
-                Created {new Date(board.created_at).toLocaleDateString()}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-400">
+                  Created {new Date(board.created_at).toLocaleDateString()}
+                </p>
+                <span className="text-xs text-gray-500">
+                  {board.item_count || 0} {board.item_count === 1 ? 'item' : 'items'}
+                </span>
+              </div>
             </div>
           </Link>
         ))}

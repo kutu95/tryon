@@ -22,7 +22,7 @@ export async function GET() {
     
     if (error) throw error
     
-    // Get primary images for all garments
+    // Get primary images and image counts for all garments
     const garmentIds = garments.map(g => g.id)
     const { data: primaryImages } = await supabase
       .from('garment_images')
@@ -30,16 +30,29 @@ export async function GET() {
       .in('garment_id', garmentIds)
       .eq('is_primary', true)
     
-    // Create a map of garment_id -> primary image
+    // Get image counts for all garments
+    const { data: allImages } = await supabase
+      .from('garment_images')
+      .select('garment_id')
+      .in('garment_id', garmentIds)
+    
+    // Create maps
     const imageMap = new Map()
     primaryImages?.forEach(image => {
       imageMap.set(image.garment_id, image)
     })
     
-    // Add primary image to each garment
+    const imageCountMap = new Map()
+    allImages?.forEach(image => {
+      const count = imageCountMap.get(image.garment_id) || 0
+      imageCountMap.set(image.garment_id, count + 1)
+    })
+    
+    // Add primary image and image count to each garment
     const garmentsWithImages = garments.map(garment => ({
       ...garment,
-      primary_image: imageMap.get(garment.id) || null
+      primary_image: imageMap.get(garment.id) || null,
+      image_count: imageCountMap.get(garment.id) || 0
     }))
     
     return NextResponse.json(garmentsWithImages)
