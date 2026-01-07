@@ -10,6 +10,7 @@ interface Profile {
   id: string
   display_name?: string
   role: 'admin' | 'stylist' | 'viewer'
+  profile_picture_path?: string
 }
 
 export function Navigation() {
@@ -17,6 +18,7 @@ export function Navigation() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -38,10 +40,27 @@ export function Navigation() {
       if (user) {
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('id, display_name, role')
+          .select('id, display_name, role, profile_picture_path')
           .eq('id', user.id)
           .single()
         setProfile(profileData)
+        
+        // Fetch profile picture URL if it exists
+        if (profileData?.profile_picture_path) {
+          try {
+            const urlResponse = await fetch(
+              `/api/storage/signed-url?bucket=profiles&path=${encodeURIComponent(profileData.profile_picture_path)}`
+            )
+            if (urlResponse.ok) {
+              const { url } = await urlResponse.json()
+              setProfilePictureUrl(url)
+            }
+          } catch (error) {
+            console.error('Error fetching profile picture URL:', error)
+          }
+        } else {
+          setProfilePictureUrl(null)
+        }
       }
     }).catch((error) => {
       console.error('Navigation auth check failed:', error)
@@ -109,9 +128,17 @@ export function Navigation() {
                 href="/profile"
                 className="flex items-center gap-2 hover:opacity-80 transition-opacity"
               >
-                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-semibold">
-                  {profile.display_name ? profile.display_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
-                </div>
+                {profilePictureUrl ? (
+                  <img
+                    src={profilePictureUrl}
+                    alt="Profile"
+                    className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-semibold">
+                    {profile.display_name ? profile.display_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                )}
                 <span className="text-sm font-medium text-gray-700">
                   {profile.display_name || user?.email || 'User'}
                 </span>

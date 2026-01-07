@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { ImageCropper } from '@/components/ImageCropper'
 
 interface Profile {
   id: string
   display_name?: string
   role: 'admin' | 'stylist' | 'viewer'
   email?: string
+  profile_picture_path?: string
 }
 
 export default function ProfilePage() {
@@ -30,6 +32,13 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
 
+  // Profile picture
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null)
+  const [showCropper, setShowCropper] = useState(false)
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null)
+  const [isUploadingPicture, setIsUploadingPicture] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     fetchProfile()
   }, [])
@@ -44,6 +53,19 @@ export default function ProfilePage() {
       if (response.ok) {
         setProfile(data)
         setDisplayName(data.display_name || '')
+        
+        // Fetch profile picture URL if it exists
+        if (data.profile_picture_path) {
+          const urlResponse = await fetch(
+            `/api/storage/signed-url?bucket=profiles&path=${encodeURIComponent(data.profile_picture_path)}`
+          )
+          if (urlResponse.ok) {
+            const { url } = await urlResponse.json()
+            setProfilePictureUrl(url)
+          }
+        } else {
+          setProfilePictureUrl(null)
+        }
       } else {
         setError(data.error || 'Failed to fetch profile')
       }
@@ -140,6 +162,104 @@ export default function ProfilePage() {
     }
   }
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const imageUrl = event.target?.result as string
+      setImageToCrop(imageUrl)
+      setShowCropper(true)
+    }
+    reader.onerror = () => {
+      setError('Failed to read image file')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleCropComplete = async (croppedImageUrl: string) => {
+    setShowCropper(false)
+    setIsUploadingPicture(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      // Convert data URL to blob
+      const response = await fetch(croppedImageUrl)
+      const blob = await response.blob()
+      
+      // Create FormData
+      const formData = new FormData()
+      formData.append('file', blob, 'profile-picture.jpg')
+
+      // Upload to server
+      const uploadResponse = await fetch('/api/profile/picture', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await uploadResponse.json()
+
+      if (uploadResponse.ok) {
+        setSuccess('Profile picture updated successfully')
+        // Refresh profile to get new picture URL
+        await fetchProfile()
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        setError(data.error || 'Failed to upload profile picture')
+      }
+    } catch (err: any) {
+      console.error('Error uploading profile picture:', err)
+      setError(err.message || 'Failed to upload profile picture')
+    } finally {
+      setIsUploadingPicture(false)
+      setImageToCrop(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleDeletePicture = async () => {
+    if (!window.confirm('Are you sure you want to delete your profile picture?')) {
+      return
+    }
+
+    try {
+      setIsUploadingPicture(true)
+      setError(null)
+      
+      const response = await fetch('/api/profile/picture', {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSuccess('Profile picture deleted successfully')
+        setProfilePictureUrl(null)
+        if (profile) {
+          setProfile({ ...profile, profile_picture_path: undefined })
+        }
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        setError(data.error || 'Failed to delete profile picture')
+      }
+    } catch (err: any) {
+      console.error('Error deleting profile picture:', err)
+      setError(err.message || 'Failed to delete profile picture')
+    } finally {
+      setIsUploadingPicture(false)
+    }
+  }
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>
   }
@@ -163,6 +283,51 @@ export default function ProfilePage() {
           <p className="text-sm text-red-800">{error}</p>
         </div>
       )}
+
+      {/* Profile Picture */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Profile Picture</h2>
+        <div className="flex items-center gap-6">
+          <div className="relative">
+            {profilePictureUrl ? (
+              <img
+                src={profilePictureUrl}
+                alt="Profile"
+                className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
+              />
+            ) : (
+              <div className="w-32 h-32 rounded-full bg-indigo-600 flex items-center justify-center text-white text-4xl font-semibold border-4 border-gray-200">
+                {profile?.display_name ? profile.display_name.charAt(0).toUpperCase() : profile?.email?.charAt(0).toUpperCase() || 'U'}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingPicture}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm"
+            >
+              {isUploadingPicture ? 'Uploading...' : profilePictureUrl ? 'Change Picture' : 'Upload Picture'}
+            </button>
+            {profilePictureUrl && (
+              <button
+                onClick={handleDeletePicture}
+                disabled={isUploadingPicture}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 text-sm"
+              >
+                Delete Picture
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Profile Information */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
@@ -318,6 +483,22 @@ export default function ProfilePage() {
           </button>
         </form>
       </div>
+
+      {/* Image Cropper Modal */}
+      {showCropper && imageToCrop && (
+        <ImageCropper
+          image={imageToCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={() => {
+            setShowCropper(false)
+            setImageToCrop(null)
+            if (fileInputRef.current) {
+              fileInputRef.current.value = ''
+            }
+          }}
+          aspect={1}
+        />
+      )}
     </div>
   )
 }
