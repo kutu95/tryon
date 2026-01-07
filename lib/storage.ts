@@ -56,3 +56,17 @@ export async function downloadFile(bucket: string, path: string): Promise<Blob |
   return data
 }
 
+export async function deleteFile(bucket: string, path: string): Promise<boolean> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.storage
+    .from(bucket)
+    .remove([path])
+
+  if (error) {
+    console.error('Error deleting file from storage:', error)
+    return false
+  }
+
+  return true
+}
+
