@@ -10,12 +10,29 @@ export async function GET() {
     const supabase = await createClient()
     const adminSupabase = createAdminClient()
     
-    // Get all users from auth.users
-    const { data: users, error: usersError } = await adminSupabase.auth.admin.listUsers()
+    // Get all users from auth.users (handle pagination)
+    let allUsers: any[] = []
+    let page = 1
+    let hasMore = true
     
-    if (usersError) {
-      console.error('Error fetching users:', usersError)
-      throw usersError
+    while (hasMore) {
+      const { data, error: usersError } = await adminSupabase.auth.admin.listUsers({
+        page,
+        perPage: 1000, // Get as many as possible per page
+      })
+      
+      if (usersError) {
+        console.error('Error fetching users:', usersError)
+        throw usersError
+      }
+      
+      if (data.users && data.users.length > 0) {
+        allUsers = [...allUsers, ...data.users]
+        hasMore = data.users.length === 1000 // If we got a full page, there might be more
+        page++
+      } else {
+        hasMore = false
+      }
     }
     
     // Get all profiles
@@ -29,7 +46,7 @@ export async function GET() {
     }
     
     // Combine user and profile data
-    const usersWithProfiles = users.users.map(user => {
+    const usersWithProfiles = allUsers.map(user => {
       const profile = profiles?.find(p => p.id === user.id)
       return {
         id: user.id,
