@@ -53,6 +53,12 @@ GRANT USAGE ON SCHEMA tryon_schema TO anon;
 GRANT USAGE ON SCHEMA tryon_schema TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON tryon_schema.settings TO authenticated;
 
+-- Grant permissions to service_role for admin operations
+GRANT USAGE ON SCHEMA tryon_schema TO service_role;
+GRANT SELECT, INSERT, UPDATE ON tryon_schema.settings TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA tryon_schema 
+  GRANT SELECT, INSERT, UPDATE ON TABLES TO service_role;
+
 -- Insert initial FASHN_API_KEY setting if it doesn't exist
 -- This will be populated from environment variable on first use
 INSERT INTO tryon_schema.settings (key, description)
