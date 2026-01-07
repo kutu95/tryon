@@ -32,7 +32,7 @@ yarn-error.log*
 .vercel
 
 # logs
-logs/
+/logs/
 *.log
 
 # cloudflare tunnel config (contains sensitive info)
