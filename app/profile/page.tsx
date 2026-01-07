@@ -368,7 +368,7 @@ export default function ProfilePage() {
                 disabled
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
               />
-              <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+              <p className="text-xs text-gray-600 mt-1">Email cannot be changed</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -458,7 +458,7 @@ export default function ProfilePage() {
               minLength={6}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
             />
-            <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters long</p>
+            <p className="text-xs text-gray-600 mt-1">Must be at least 6 characters long</p>
           </div>
           <div>
             <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">

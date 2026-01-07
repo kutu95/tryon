@@ -292,7 +292,7 @@ export default function GarmentDetailPage() {
                   </span>
                 )}
                 {garment.notes && (
-                  <p className="text-gray-600 mt-2">{garment.notes}</p>
+                  <p className="text-gray-700 mt-2">{garment.notes}</p>
                 )}
               </>
             )}

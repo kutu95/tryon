@@ -641,7 +641,7 @@ export default function StudioPage() {
   const selectedGarmentImageData = garmentImages.find(i => i.id === selectedGarmentImageId)
 
   return (
-    <div>
+    <div className="bg-white text-gray-900">
       <h1 className="text-3xl font-bold mb-6">Try-On Studio</h1>
 
       {error && (
@@ -1020,7 +1020,7 @@ export default function StudioPage() {
                   <div className="w-full h-48 bg-gray-200" />
                 )}
                 <div className="p-2 bg-gray-50">
-                  <p className="text-xs text-gray-600">Seed: {result.seed}</p>
+                  <p className="text-xs text-gray-700">Seed: {result.seed}</p>
                   {session.selectedIndex === index && (
                     <p className="text-xs text-indigo-600 font-medium mt-1">Selected</p>
                   )}
@@ -1065,7 +1065,7 @@ export default function StudioPage() {
             </div>
           </div>
 
-          <div className="mb-4 text-sm text-gray-600">
+          <div className="mb-4 text-sm text-gray-700">
             <p>Seed: {session.finalResult.seed}</p>
             <p>Mode: {session.finalResult.params.mode || 'balanced'}</p>
             {session.timestamps.finalized && (

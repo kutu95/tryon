@@ -130,7 +130,7 @@ export default function AccountPage() {
       <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">FASHN AI Account</h2>
         
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-700 mb-4">
           Manage your FASHN AI account settings and access the FASHN AI dashboard.
         </p>
 
@@ -147,7 +147,7 @@ export default function AccountPage() {
               </svg>
               View Requests
             </a>
-            <p className="text-sm text-gray-500 ml-7">View and manage your FASHN AI try-on requests</p>
+            <p className="text-sm text-gray-600 ml-7">View and manage your FASHN AI try-on requests</p>
           </div>
 
           <div>
@@ -162,7 +162,7 @@ export default function AccountPage() {
               </svg>
               API Keys
             </a>
-            <p className="text-sm text-gray-500 ml-7">Manage your FASHN AI API keys</p>
+            <p className="text-sm text-gray-600 ml-7">Manage your FASHN AI API keys</p>
           </div>
 
           <div>
@@ -177,7 +177,7 @@ export default function AccountPage() {
               </svg>
               Billing
             </a>
-            <p className="text-sm text-gray-500 ml-7">View billing information and manage your subscription</p>
+            <p className="text-sm text-gray-600 ml-7">View billing information and manage your subscription</p>
           </div>
         </div>
       </div>
@@ -188,7 +188,7 @@ export default function AccountPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-semibold">FASHN API Key</h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-700 mt-1">
                 Update the FASHN AI API key if you need to use a different account
               </p>
             </div>
@@ -277,7 +277,7 @@ export default function AccountPage() {
 
       {!isAdmin && (
         <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <p className="text-gray-600">
+          <p className="text-gray-700">
             API key management is only available to administrators.
           </p>
         </div>
