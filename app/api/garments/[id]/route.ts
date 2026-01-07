@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, getCurrentProfile } from '@/lib/auth'
 import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 
 export async function GET(
@@ -30,8 +30,30 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAuth()
+    const user = await requireAuth()
     const supabase = await createClient()
+    const profile = await getCurrentProfile()
+    
+    // Get the garment to check permissions
+    const { data: garment, error: fetchError } = await supabase
+      .from('garments')
+      .select('created_by')
+      .eq('id', params.id)
+      .single()
+    
+    if (fetchError) throw fetchError
+    if (!garment) {
+      return NextResponse.json({ error: 'Garment not found' }, { status: 404 })
+    }
+    
+    // Check if user is creator or admin
+    const isCreator = garment.created_by === user.id
+    const isAdmin = profile?.role === 'admin'
+    
+    if (!isCreator && !isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+    
     const body = await request.json()
     
     const { data, error } = await supabase
@@ -48,8 +70,22 @@ export async function PUT(
     
     if (error) throw error
     
+    // Log audit event
+    const metadata = getRequestMetadata(request)
+    await logAuditEvent({
+      user_id: user.id,
+      event_type: 'garment_updated',
+      resource_type: 'garment',
+      resource_id: params.id,
+      details: { name: body.name, category: body.category },
+      ...metadata,
+    })
+    
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

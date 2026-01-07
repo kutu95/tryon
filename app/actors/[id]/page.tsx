@@ -8,6 +8,12 @@ interface Actor {
   id: string
   name: string
   notes?: string
+  created_by?: string
+}
+
+interface Profile {
+  id: string
+  role: 'admin' | 'stylist' | 'viewer'
 }
 
 interface ActorPhoto {
@@ -20,29 +26,95 @@ interface ActorPhoto {
 export default function ActorDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const supabase = createClient()
   const [actor, setActor] = useState<Actor | null>(null)
   const [photos, setPhotos] = useState<ActorPhoto[]>([])
   const [loading, setLoading] = useState(true)
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editNotes, setEditNotes] = useState('')
 
   useEffect(() => {
     if (params.id) {
+      fetchUserAndProfile()
       fetchActor()
       fetchPhotos()
     }
   }, [params.id])
+
+  const fetchUserAndProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUser(user)
+      
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        setProfile(profileData)
+      }
+    } catch (error) {
+      console.error('Error fetching user/profile:', error)
+    }
+  }
 
   const fetchActor = async () => {
     try {
       const response = await fetch(`/api/actors/${params.id}`)
       const data = await response.json()
       setActor(data)
+      setEditName(data.name || '')
+      setEditNotes(data.notes || '')
     } catch (error) {
       console.error('Error fetching actor:', error)
     } finally {
       setLoading(false)
     }
   }
+
+  const handleEdit = () => {
+    setIsEditing(true)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    if (actor) {
+      setEditName(actor.name)
+      setEditNotes(actor.notes || '')
+    }
+  }
+
+  const handleSaveEdit = async () => {
+    try {
+      const response = await fetch(`/api/actors/${params.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editName,
+          notes: editNotes,
+        }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setActor(data)
+        setIsEditing(false)
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error updating actor:', error)
+      alert('Failed to update actor')
+    }
+  }
+
+  const canEdit = actor && currentUser && (actor.created_by === currentUser.id || profile?.role === 'admin')
 
   const fetchPhotos = async () => {
     try {
@@ -167,10 +239,57 @@ export default function ActorDetailPage() {
         >
           ← Back to Actors
         </button>
-        <h1 className="text-3xl font-bold">{actor.name}</h1>
-        {actor.notes && (
-          <p className="text-gray-600 mt-2">{actor.notes}</p>
-        )}
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            {isEditing ? (
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="text-3xl font-bold w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                  placeholder="Actor name"
+                />
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                  rows={3}
+                  placeholder="Notes"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveEdit}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold">{actor.name}</h1>
+                {actor.notes && (
+                  <p className="text-gray-600 mt-2">{actor.notes}</p>
+                )}
+              </>
+            )}
+          </div>
+          {canEdit && !isEditing && (
+            <button
+              onClick={handleEdit}
+              className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            >
+              Edit
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-6">
