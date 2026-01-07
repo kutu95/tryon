@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
-import { runTryOn, TryOnError } from '@/lib/fashn'
+import { runTryOn, type TryOnError } from '@/lib/fashn'
 import { uploadFile } from '@/lib/storage'
 import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
-import { TryOnRequest } from '@/lib/fashn/types'
+import { type TryOnRequest } from '@/lib/fashn/types'
 
 export const runtime = 'nodejs' // Ensure Node.js runtime
 
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     
     // Create try-on job records for each result (if using old format)
     if (body.actor_photo_id && body.garment_image_id) {
-      const jobs = []
+      const jobs: Array<{ id: string; [key: string]: any }> = []
       for (const tryOnResult of result.results) {
         let resultStoragePath: string | null = null
         

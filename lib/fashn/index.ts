@@ -9,6 +9,9 @@ import { getFashnApiKey } from '../fashn-api-key'
 import { TryOnRequest, TryOnRequestSchema, TryOnResponse, TryOnResult, TryOnError } from './types'
 import { ProductToModelRequest, ModelSwapRequest } from './types'
 
+// Re-export types for convenience
+export type { TryOnError, TryOnRequest, TryOnResponse, TryOnResult } from './types'
+
 const FASHN_BASE_URL = process.env.FASHN_API_BASE_URL || 'https://api.fashn.ai/v1'
 
 /**
