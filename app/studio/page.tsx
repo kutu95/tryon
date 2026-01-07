@@ -225,7 +225,7 @@ export default function StudioPage() {
     setResultCache(prev => new Map(prev).set(cacheKey, results))
   }
 
-  // Fast Preview: Generate 4 samples with performance mode
+  // Fast Preview: Generate samples with performance mode (uses num_samples from settings)
   const handleFastPreview = async () => {
     if (!selectedActorPhotoId || !selectedGarmentImageId) {
       setError('Please select both an actor photo and a garment image')
@@ -245,10 +245,12 @@ export default function StudioPage() {
 
     try {
       // Check cache first
+      // Use num_samples from advancedSettings, default to 1 if not set
+      const numSamples = advancedSettings.num_samples || 1
       const previewParams: Partial<TryOnRequest> = {
         ...advancedSettings,
         mode: 'performance',
-        num_samples: 4,
+        num_samples: numSamples,
       }
       
       const cached = getCachedResult(modelImageUrl, garmentImageUrl, previewParams)
@@ -775,7 +777,9 @@ export default function StudioPage() {
           disabled={loading || !selectedActorPhotoId || !selectedGarmentImageId}
           className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Generating Preview...' : 'Fast Preview (4 samples)'}
+          {loading 
+            ? 'Generating Preview...' 
+            : `Fast Preview (${advancedSettings.num_samples || 1} ${(advancedSettings.num_samples || 1) === 1 ? 'sample' : 'samples'})`}
         </button>
 
         <button
