@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
+import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 
 export async function GET(
   request: NextRequest,
@@ -57,7 +58,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAuth()
+    const user = await requireAuth()
     const supabase = await createClient()
     
     const { error } = await supabase
@@ -66,6 +67,16 @@ export async function DELETE(
       .eq('id', params.id)
     
     if (error) throw error
+    
+    // Log audit event
+    const metadata = getRequestMetadata(request)
+    await logAuditEvent({
+      user_id: user.id,
+      event_type: 'actor_deleted',
+      resource_type: 'actor',
+      resource_id: params.id,
+      ...metadata,
+    })
     
     return NextResponse.json({ success: true })
   } catch (error: any) {

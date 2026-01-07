@@ -40,6 +40,19 @@ export default function LoginPage() {
 
       if (result.error) {
         setError(result.error.message)
+        // Log failed login attempt
+        try {
+          await fetch('/api/audit/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event_type: 'login_failure',
+              details: { email, error: result.error.message },
+            }),
+          })
+        } catch (err) {
+          console.error('Failed to log login attempt:', err)
+        }
         setLoading(false)
       } else {
         // Login successful - refresh session to ensure cookies are set
@@ -61,6 +74,22 @@ export default function LoginPage() {
         }
         
         console.log('Session refreshed, redirecting to /studio...')
+        
+        // Log successful login
+        try {
+          await fetch('/api/audit/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: refreshedSession.user.id,
+              event_type: 'login_success',
+              details: { email },
+            }),
+          })
+        } catch (err) {
+          console.error('Failed to log login success:', err)
+        }
+        
         setLoading(false)
         // Use router.replace like cashbook does - it should work now that session is refreshed
         router.replace('/studio')

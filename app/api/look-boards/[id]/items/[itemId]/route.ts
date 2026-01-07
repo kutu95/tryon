@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentProfile } from '@/lib/auth'
+import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 
 export async function DELETE(
   request: NextRequest,
@@ -39,6 +40,17 @@ export async function DELETE(
       .eq('look_board_id', params.id)
     
     if (deleteError) throw deleteError
+    
+    // Log audit event
+    const metadata = getRequestMetadata(request)
+    await logAuditEvent({
+      user_id: user.id,
+      event_type: 'look_item_deleted',
+      resource_type: 'look_item',
+      resource_id: params.itemId,
+      details: { look_board_id: params.id },
+      ...metadata,
+    })
     
     return NextResponse.json({ success: true })
   } catch (error: any) {

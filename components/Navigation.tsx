@@ -70,6 +70,7 @@ export function Navigation() {
   // Add admin-only items
   if (userRole === 'admin') {
     navItems.push({ href: '/admin/users', label: 'Users' })
+    navItems.push({ href: '/admin/logs', label: 'Logs' })
   }
 
   return (

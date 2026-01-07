@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
 import { getTryOnProvider } from '@/src/server/tryon/providers'
 import { getSignedUrl } from '@/lib/storage'
+import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -139,6 +140,22 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', job.id)
     }
+    
+    // Log audit event
+    const metadata = getRequestMetadata(request)
+    await logAuditEvent({
+      user_id: user.id,
+      event_type: 'tryon_created',
+      resource_type: 'tryon_job',
+      resource_id: job.id,
+      details: { 
+        provider: process.env.TRYON_PROVIDER || 'stub',
+        status: job.status,
+        actor_photo_id,
+        garment_image_id,
+      },
+      ...metadata,
+    })
     
     return NextResponse.json(job, { status: 201 })
   } catch (error: any) {

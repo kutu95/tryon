@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
+import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 
 export async function GET() {
   try {
@@ -72,6 +73,17 @@ export async function POST(request: NextRequest) {
       .single()
     
     if (error) throw error
+    
+    // Log audit event
+    const metadata = getRequestMetadata(request)
+    await logAuditEvent({
+      user_id: user.id,
+      event_type: 'actor_created',
+      resource_type: 'actor',
+      resource_id: data.id,
+      details: { name: body.name },
+      ...metadata,
+    })
     
     return NextResponse.json(data, { status: 201 })
   } catch (error: any) {
