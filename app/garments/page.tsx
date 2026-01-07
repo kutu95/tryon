@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Garment {
   id: string
@@ -9,6 +10,15 @@ interface Garment {
   category?: string
   notes?: string
   created_at: string
+  creator?: {
+    id: string
+    display_name: string
+    role: string
+  }
+  primary_image?: {
+    id: string
+    storage_path: string
+  } | null
 }
 
 export default function GarmentsPage() {
@@ -18,6 +28,7 @@ export default function GarmentsPage() {
   const [name, setName] = useState('')
   const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
+  const [primaryImageUrls, setPrimaryImageUrls] = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetchGarments()
@@ -29,6 +40,25 @@ export default function GarmentsPage() {
       const data = await response.json()
       if (response.ok && Array.isArray(data)) {
         setGarments(data)
+        
+        // Fetch signed URLs for primary images
+        const urls: Record<string, string> = {}
+        for (const garment of data) {
+          if (garment.primary_image?.storage_path) {
+            try {
+              const urlResponse = await fetch(
+                `/api/storage/signed-url?bucket=garments&path=${encodeURIComponent(garment.primary_image.storage_path)}`
+              )
+              if (urlResponse.ok) {
+                const { url } = await urlResponse.json()
+                urls[garment.id] = url
+              }
+            } catch (error) {
+              console.error(`Error fetching signed URL for garment ${garment.id}:`, error)
+            }
+          }
+        }
+        setPrimaryImageUrls(urls)
       } else {
         console.error('Error fetching garments:', data.error || data)
         setGarments([])
@@ -133,20 +163,42 @@ export default function GarmentsPage() {
           <Link
             key={garment.id}
             href={`/garments/${garment.id}`}
-            className="block p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+            className="flex items-center p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
           >
-            <h2 className="text-xl font-semibold mb-2">{garment.name}</h2>
-            {garment.category && (
-              <span className="inline-block px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded mb-2">
-                {garment.category}
-              </span>
+            {primaryImageUrls[garment.id] ? (
+              <Image
+                src={primaryImageUrls[garment.id]}
+                alt={garment.name}
+                width={64}
+                height={64}
+                className="w-16 h-16 rounded object-cover mr-4 bg-gray-100"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">
+                No image
+              </div>
             )}
-            {garment.notes && (
-              <p className="text-sm text-gray-600 mb-2">{garment.notes}</p>
-            )}
-            <p className="text-xs text-gray-400">
-              Created {new Date(garment.created_at).toLocaleDateString()}
-            </p>
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold mb-1">{garment.name}</h2>
+              {garment.category && (
+                <span className="inline-block px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded mb-1">
+                  {garment.category}
+                </span>
+              )}
+              {garment.notes && (
+                <p className="text-sm text-gray-600 mb-1 line-clamp-2">{garment.notes}</p>
+              )}
+              <div className="mt-1 space-y-0.5">
+                {garment.creator && (
+                  <p className="text-xs text-gray-500">
+                    By <span className="font-medium text-gray-700">{garment.creator.display_name || 'Unknown'}</span>
+                  </p>
+                )}
+                <p className="text-xs text-gray-400">
+                  Created {new Date(garment.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
           </Link>
         ))}
       </div>

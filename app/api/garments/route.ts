@@ -10,14 +10,38 @@ export async function GET() {
     }
     const supabase = await createClient()
     
-    const { data, error } = await supabase
+    // Get all garments with creator info
+    const { data: garments, error } = await supabase
       .from('garments')
-      .select('*')
+      .select(`
+        *,
+        creator:profiles!created_by(id, display_name, role)
+      `)
       .order('created_at', { ascending: false })
     
     if (error) throw error
     
-    return NextResponse.json(data)
+    // Get primary images for all garments
+    const garmentIds = garments.map(g => g.id)
+    const { data: primaryImages } = await supabase
+      .from('garment_images')
+      .select('id, garment_id, storage_path')
+      .in('garment_id', garmentIds)
+      .eq('is_primary', true)
+    
+    // Create a map of garment_id -> primary image
+    const imageMap = new Map()
+    primaryImages?.forEach(image => {
+      imageMap.set(image.garment_id, image)
+    })
+    
+    // Add primary image to each garment
+    const garmentsWithImages = garments.map(garment => ({
+      ...garment,
+      primary_image: imageMap.get(garment.id) || null
+    }))
+    
+    return NextResponse.json(garmentsWithImages)
   } catch (error: any) {
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

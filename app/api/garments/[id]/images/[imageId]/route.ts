@@ -10,10 +10,40 @@ export async function PUT(
     await requireAuth()
     const supabase = await createClient()
     const body = await request.json()
-    const { image_type } = body
+    const { image_type, is_primary } = body
 
+    // Handle primary image update
+    if (is_primary !== undefined) {
+      // If setting this image as primary, unset all other primary images for this garment
+      if (is_primary) {
+        const { error: unsetError } = await supabase
+          .from('garment_images')
+          .update({ is_primary: false })
+          .eq('garment_id', params.id)
+          .eq('is_primary', true)
+
+        if (unsetError) throw unsetError
+      }
+
+      // Set the target image's primary status
+      const { data, error } = await supabase
+        .from('garment_images')
+        .update({ 
+          is_primary: is_primary,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', params.imageId)
+        .eq('garment_id', params.id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return NextResponse.json(data)
+    }
+
+    // Handle image_type update
     if (image_type === undefined) {
-      return NextResponse.json({ error: 'image_type field is required' }, { status: 400 })
+      return NextResponse.json({ error: 'image_type or is_primary field is required' }, { status: 400 })
     }
 
     const { data, error } = await supabase

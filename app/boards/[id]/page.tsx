@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 interface LookBoard {
   id: string
   title: string
   description?: string
+  created_by?: string
+}
+
+interface Profile {
+  id: string
+  role: 'admin' | 'stylist' | 'viewer'
 }
 
 interface LookItem {
@@ -28,30 +35,118 @@ interface LookItem {
 export default function BoardDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const supabase = createClient()
   const [board, setBoard] = useState<LookBoard | null>(null)
   const [items, setItems] = useState<LookItem[]>([])
   const [loading, setLoading] = useState(true)
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
 
   useEffect(() => {
     if (params.id) {
+      fetchUserAndProfile()
       fetchBoard()
       fetchItems()
     }
   }, [params.id])
+
+  const fetchUserAndProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUser(user)
+      
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        setProfile(profileData)
+      }
+    } catch (error) {
+      console.error('Error fetching user/profile:', error)
+    }
+  }
 
   const fetchBoard = async () => {
     try {
       const response = await fetch(`/api/look-boards/${params.id}`)
       const data = await response.json()
       setBoard(data)
+      setEditTitle(data.title || '')
+      setEditDescription(data.description || '')
     } catch (error) {
       console.error('Error fetching board:', error)
     } finally {
       setLoading(false)
     }
   }
+
+  const handleEdit = () => {
+    setIsEditing(true)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    if (board) {
+      setEditTitle(board.title)
+      setEditDescription(board.description || '')
+    }
+  }
+
+  const handleSaveEdit = async () => {
+    try {
+      const response = await fetch(`/api/look-boards/${params.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle,
+          description: editDescription,
+        }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setBoard(data)
+        setIsEditing(false)
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error updating board:', error)
+      alert('Failed to update board')
+    }
+  }
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/look-boards/${params.id}/items/${itemId}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        fetchItems() // Refresh items
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error)
+      alert('Failed to delete item')
+    }
+  }
+
+  const canEdit = board && currentUser && (board.created_by === currentUser.id || profile?.role === 'admin')
 
   const fetchItems = async () => {
     try {
@@ -93,15 +188,69 @@ export default function BoardDetailPage() {
         >
           ← Back to Look Boards
         </button>
-        <h1 className="text-3xl font-bold">{board.title}</h1>
-        {board.description && (
-          <p className="text-gray-600 mt-2">{board.description}</p>
-        )}
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            {isEditing ? (
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="text-3xl font-bold w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                />
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveEdit}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold">{board.title}</h1>
+                {board.description && (
+                  <p className="text-gray-600 mt-2">{board.description}</p>
+                )}
+              </>
+            )}
+          </div>
+          {canEdit && !isEditing && (
+            <button
+              onClick={handleEdit}
+              className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            >
+              Edit
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => (
-          <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden">
+          <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden relative group">
+            {canEdit && (
+              <button
+                onClick={() => handleDeleteItem(item.id)}
+                className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 z-10"
+                title="Delete item"
+              >
+                Delete
+              </button>
+            )}
             {signedUrls[item.id] ? (
               <div
                 className="w-full h-64 bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"

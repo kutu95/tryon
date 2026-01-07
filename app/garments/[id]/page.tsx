@@ -14,6 +14,7 @@ interface GarmentImage {
   id: string
   storage_path: string
   image_type?: string
+  is_primary?: boolean
   tags: string[]
 }
 
@@ -123,6 +124,26 @@ export default function GarmentDetailPage() {
     }
   }
 
+  const handleSetPrimary = async (imageId: string) => {
+    try {
+      const response = await fetch(`/api/garments/${params.id}/images/${imageId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_primary: true }),
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to set primary image')
+      }
+      
+      fetchImages()
+    } catch (error: any) {
+      console.error('Error setting primary image:', error)
+      alert(`Error setting primary image: ${error.message || 'Unknown error'}`)
+    }
+  }
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>
   }
@@ -201,13 +222,27 @@ export default function GarmentDetailPage() {
               </div>
             )}
             <div className="absolute top-2 right-2 flex gap-2">
+              {image.is_primary && (
+                <span className="bg-indigo-600 text-white text-xs px-2 py-1 rounded">
+                  Primary
+                </span>
+              )}
               {image.image_type && (
                 <span className="bg-gray-800 text-white text-xs px-2 py-1 rounded">
                   {image.image_type}
                 </span>
               )}
             </div>
-            <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity space-y-2">
+              {!image.is_primary && (
+                <button
+                  onClick={() => handleSetPrimary(image.id)}
+                  className="w-full px-2 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700"
+                  title="Set as primary image"
+                >
+                  Set Primary
+                </button>
+              )}
               <select
                 value={image.image_type || ''}
                 onChange={(e) => handleImageTypeChange(image.id, e.target.value)}

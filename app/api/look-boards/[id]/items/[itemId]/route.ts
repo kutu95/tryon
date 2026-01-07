@@ -1,36 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/auth'
-
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentProfile } from '@/lib/auth'
 
-export async function GET(
+export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await requireAuth()
-    const supabase = await createClient()
-    
-    const { data, error } = await supabase
-      .from('look_boards')
-      .select('*')
-      .eq('id', params.id)
-      .single()
-    
-    if (error) throw error
-    
-    return NextResponse.json(data)
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-}
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string; itemId: string } }
 ) {
   try {
     const user = await requireAuth()
@@ -57,23 +31,16 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
     
-    const body = await request.json()
-    const { title, description } = body
+    // Delete the look item
+    const { error: deleteError } = await supabase
+      .from('look_items')
+      .delete()
+      .eq('id', params.itemId)
+      .eq('look_board_id', params.id)
     
-    const { data, error } = await supabase
-      .from('look_boards')
-      .update({
-        title: title,
-        description: description,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', params.id)
-      .select()
-      .single()
+    if (deleteError) throw deleteError
     
-    if (error) throw error
-    
-    return NextResponse.json(data)
+    return NextResponse.json({ success: true })
   } catch (error: any) {
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
