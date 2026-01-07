@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { TryOnRequest, TryOnResult, Category, Mode, GarmentPhotoType, ModerationLevel, OutputFormat } from '@/lib/fashn/types'
 
@@ -98,6 +98,9 @@ export default function StudioPage() {
   
   // Result cache
   const [resultCache, setResultCache] = useState<Map<string, TryOnResult[]>>(new Map())
+  
+  // Polling intervals (for cleanup)
+  const pollingIntervalsRef = useRef<NodeJS.Timeout[]>([])
 
   // Load settings from localStorage
   useEffect(() => {
@@ -121,6 +124,15 @@ export default function StudioPage() {
     fetchActors()
     fetchGarments()
     fetchBoards()
+    
+    // Cleanup polling intervals on unmount
+    return () => {
+      pollingIntervalsRef.current.forEach(id => {
+        clearInterval(id)
+        clearTimeout(id)
+      })
+      pollingIntervalsRef.current = []
+    }
   }, [])
 
   useEffect(() => {
@@ -286,6 +298,68 @@ export default function StudioPage() {
 
       const data = await response.json()
       
+      // Handle async job (202 Accepted)
+      if (response.status === 202 && data.jobId && data.isAsync) {
+        console.log('[Studio] Async job created, polling for results:', data.jobId)
+        // Poll for results
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(`/api/tryon/${data.jobId}`)
+            if (statusResponse.ok) {
+              const job = await statusResponse.json()
+              
+              if (job.status === 'succeeded' && job.result_url) {
+                clearInterval(pollInterval)
+                pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
+                // Convert job to result format
+                const result: TryOnResult = {
+                  imageUrl: job.result_url,
+                  seed: previewParams.seed || 0,
+                  params: previewParams,
+                  createdAt: job.created_at,
+                  requestId: job.id,
+                }
+                
+                // Cache result
+                cacheResult(modelImageUrl, garmentImageUrl, previewParams, [result])
+                
+                setSession({
+                  selectedIndex: null,
+                  previewResults: [result],
+                  finalResult: null,
+                  seeds: [result.seed],
+                  params: previewParams,
+                  timestamps: { preview: new Date().toISOString() },
+                })
+                setLoading(false)
+              } else if (job.status === 'failed') {
+                clearInterval(pollInterval)
+                pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
+                setError(job.error_message || 'Try-on generation failed')
+                setLoading(false)
+              }
+            }
+          } catch (pollError) {
+            console.error('Error polling job status:', pollError)
+          }
+        }, 2000) // Poll every 2 seconds
+        
+        pollingIntervalsRef.current.push(pollInterval)
+        
+        // Timeout after 60 seconds
+        const timeoutId = setTimeout(() => {
+          clearInterval(pollInterval)
+          pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
+          setError('Request timed out. Please try again.')
+          setLoading(false)
+        }, 60000)
+        
+        pollingIntervalsRef.current.push(timeoutId as any)
+        
+        return // Don't process further, polling will update state
+      }
+      
+      // Handle synchronous results
       if (!data.results || data.results.length === 0) {
         throw new Error('No results returned')
       }
@@ -369,6 +443,69 @@ export default function StudioPage() {
 
       const data = await response.json()
       
+      // Handle async job (202 Accepted)
+      if (response.status === 202 && data.jobId && data.isAsync) {
+        console.log('[Studio] Async job created for finalize, polling for results:', data.jobId)
+        // Poll for results
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(`/api/tryon/${data.jobId}`)
+            if (statusResponse.ok) {
+              const job = await statusResponse.json()
+              
+              if (job.status === 'succeeded' && job.result_url) {
+                clearInterval(pollInterval)
+                pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
+                // Convert job to result format
+                const finalResult: TryOnResult = {
+                  imageUrl: job.result_url,
+                  seed: selectedResult.seed,
+                  params: finalizeParams,
+                  createdAt: job.created_at,
+                  requestId: job.id,
+                }
+                
+                // Cache result
+                cacheResult(modelImageUrl, garmentImageUrl, finalizeParams, [finalResult])
+                
+                setSession({
+                  ...session,
+                  selectedIndex,
+                  finalResult,
+                  timestamps: {
+                    ...session.timestamps,
+                    finalized: new Date().toISOString(),
+                  },
+                })
+                setLoading(false)
+              } else if (job.status === 'failed') {
+                clearInterval(pollInterval)
+                pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
+                setError(job.error_message || 'Try-on generation failed')
+                setLoading(false)
+              }
+            }
+          } catch (pollError) {
+            console.error('Error polling job status:', pollError)
+          }
+        }, 2000) // Poll every 2 seconds
+        
+        pollingIntervalsRef.current.push(pollInterval)
+        
+        // Timeout after 60 seconds
+        const timeoutId = setTimeout(() => {
+          clearInterval(pollInterval)
+          pollingIntervalsRef.current = pollingIntervalsRef.current.filter(id => id !== pollInterval)
+          setError('Request timed out. Please try again.')
+          setLoading(false)
+        }, 60000)
+        
+        pollingIntervalsRef.current.push(timeoutId as any)
+        
+        return // Don't process further, polling will update state
+      }
+      
+      // Handle synchronous results
       if (!data.results || data.results.length === 0) {
         throw new Error('No results returned')
       }
