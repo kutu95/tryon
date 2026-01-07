@@ -377,14 +377,20 @@ export default function StudioPage() {
         throw new Error('No results returned')
       }
 
+      // Preserve jobId from API response if available
+      const resultsWithJobId = data.results.map((r: any) => ({
+        ...r,
+        jobId: r.jobId, // Preserve jobId if present in response
+      }))
+
       // Cache results
-      cacheResult(modelImageUrl, garmentImageUrl, previewParams, data.results)
+      cacheResult(modelImageUrl, garmentImageUrl, previewParams, resultsWithJobId)
 
       setSession({
         selectedIndex: null,
-        previewResults: data.results,
+        previewResults: resultsWithJobId,
         finalResult: null,
-        seeds: data.results.map((r: TryOnResult) => r.seed),
+        seeds: resultsWithJobId.map((r: TryOnResult) => r.seed),
         params: previewParams,
         timestamps: { preview: new Date().toISOString() },
       })
@@ -536,7 +542,10 @@ export default function StudioPage() {
         throw new Error('No results returned')
       }
 
-      const finalResult = data.results[0]
+      const finalResult = {
+        ...data.results[0],
+        jobId: (data.results[0] as any).jobId, // Preserve jobId if present
+      }
       
       // Cache result
       cacheResult(modelImageUrl, garmentImageUrl, finalizeParams, [finalResult])
@@ -1110,31 +1119,40 @@ export default function StudioPage() {
                   if (!selectedBoardId || !session?.finalResult) return
                   setSaving(true)
                   try {
-                    // First, we need to create a tryon_job record
-                    // For now, we'll save the image URL/base64 to a look board item
-                    // In a full implementation, we'd upload the result to storage first
-                    const response = await fetch('/api/look-boards', {
+                    // Get the tryon_job_id from the result
+                    // For async jobs, requestId is the tryon_job ID
+                    // For sync results, jobId might be available
+                    const tryonJobId = (session.finalResult as any).jobId || session.finalResult.requestId
+                    
+                    if (!tryonJobId) {
+                      alert('Error: No try-on job ID found. Please generate a new try-on result.')
+                      setSaving(false)
+                      return
+                    }
+                    
+                    // Add the item to the selected look board
+                    const response = await fetch(`/api/look-boards/${selectedBoardId}/items`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        title: `Try-on ${new Date().toLocaleString()}`,
-                        description: `Seed: ${session.finalResult.seed}, Mode: ${session.finalResult.params.mode}`,
+                        tryon_job_id: tryonJobId,
+                        label: `Try-on ${new Date().toLocaleString()}`,
+                        notes: `Seed: ${session.finalResult.seed}, Mode: ${session.finalResult.params.mode || 'balanced'}`,
                       }),
                     })
                     
                     if (response.ok) {
-                      const board = await response.json()
-                      // Note: In a full implementation, we'd need to create a tryon_job
-                      // and then add it to the look board. For now, this is a simplified version.
-                      alert('Saved! (Note: Full integration with look boards requires storing the result image first)')
                       setShowSaveModal(false)
                       setSelectedBoardId('')
+                      // Optionally show success message or refresh
+                      alert('Saved to look board!')
                     } else {
-                      alert('Failed to save to board')
+                      const errorData = await response.json()
+                      alert(`Failed to save: ${errorData.error || 'Unknown error'}`)
                     }
-                  } catch (error) {
+                  } catch (error: any) {
                     console.error('Error saving to board:', error)
-                    alert('Failed to save to board')
+                    alert(`Failed to save to board: ${error.message || 'Unknown error'}`)
                   } finally {
                     setSaving(false)
                   }
