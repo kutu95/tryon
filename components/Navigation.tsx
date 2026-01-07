@@ -6,11 +6,17 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+interface Profile {
+  id: string
+  display_name?: string
+  role: 'admin' | 'stylist' | 'viewer'
+}
+
 export function Navigation() {
   const pathname = usePathname()
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
-  const [userRole, setUserRole] = useState<string | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -23,24 +29,24 @@ export function Navigation() {
       if (error) {
         console.error('Navigation auth check error:', error)
         setUser(null)
-        setUserRole(null)
+        setProfile(null)
         return
       }
       setUser(user)
       
-      // Get user role
+      // Get user profile
       if (user) {
-        const { data: profile } = await supabase
+        const { data: profileData } = await supabase
           .from('profiles')
-          .select('role')
+          .select('id, display_name, role')
           .eq('id', user.id)
           .single()
-        setUserRole(profile?.role || null)
+        setProfile(profileData)
       }
     }).catch((error) => {
       console.error('Navigation auth check failed:', error)
       setUser(null)
-      setUserRole(null)
+      setProfile(null)
     })
   }, [supabase, pathname])
 
@@ -68,7 +74,7 @@ export function Navigation() {
   ]
 
   // Add admin-only items
-  if (userRole === 'admin') {
+  if (profile?.role === 'admin') {
     navItems.push({ href: '/admin/users', label: 'Users' })
     navItems.push({ href: '/admin/logs', label: 'Logs' })
   }
@@ -97,12 +103,24 @@ export function Navigation() {
               ))}
             </div>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-          >
-            Sign Out
-          </button>
+          <div className="flex items-center gap-4">
+            {profile && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-semibold">
+                  {profile.display_name ? profile.display_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <span className="text-sm font-medium text-gray-700">
+                  {profile.display_name || user?.email || 'User'}
+                </span>
+              </div>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     </nav>
