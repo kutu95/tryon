@@ -12,7 +12,10 @@ export async function GET() {
     
     const { data, error } = await supabase
       .from('look_boards')
-      .select('*')
+      .select(`
+        *,
+        creator:profiles!created_by(id, display_name, role)
+      `)
       .order('created_at', { ascending: false })
     
     if (error) throw error

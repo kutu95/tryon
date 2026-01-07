@@ -8,6 +8,11 @@ interface LookBoard {
   title: string
   description?: string
   created_at: string
+  creator?: {
+    id: string
+    display_name: string
+    role: string
+  }
 }
 
 export default function BoardsPage() {
@@ -119,9 +124,16 @@ export default function BoardsPage() {
             {board.description && (
               <p className="text-sm text-gray-600 mb-2">{board.description}</p>
             )}
-            <p className="text-xs text-gray-400">
-              Created {new Date(board.created_at).toLocaleDateString()}
-            </p>
+            <div className="mt-2 space-y-1">
+              {board.creator && (
+                <p className="text-xs text-gray-500">
+                  Created by <span className="font-medium text-gray-700">{board.creator.display_name || 'Unknown'}</span>
+                </p>
+              )}
+              <p className="text-xs text-gray-400">
+                Created {new Date(board.created_at).toLocaleDateString()}
+              </p>
+            </div>
           </Link>
         ))}
       </div>
