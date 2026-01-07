@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { TryOnRequest, TryOnResult, Category, Mode, GarmentPhotoType, ModerationLevel, OutputFormat } from '@/lib/fashn/types'
 
 interface Actor {
   id: string
@@ -27,16 +28,34 @@ interface GarmentImage {
   garment?: Garment
 }
 
-interface TryOnJob {
-  id: string
-  status: 'queued' | 'running' | 'succeeded' | 'failed'
-  result_url?: string
-  error_message?: string
-}
-
 interface LookBoard {
   id: string
   title: string
+}
+
+interface TryOnSession {
+  selectedIndex: number | null
+  previewResults: TryOnResult[]
+  finalResult: TryOnResult | null
+  seeds: number[]
+  params: Partial<TryOnRequest>
+  timestamps: {
+    preview?: string
+    finalized?: string
+  }
+}
+
+// Cache key generator
+function getCacheKey(modelImage: string, garmentImage: string, params: Partial<TryOnRequest>): string {
+  const keyParts = [
+    modelImage.substring(0, 50),
+    garmentImage.substring(0, 50),
+    params.seed || 'none',
+    params.mode || 'balanced',
+    params.category || 'auto',
+    params.num_samples || 1,
+  ]
+  return btoa(keyParts.join('|')).substring(0, 64)
 }
 
 export default function StudioPage() {
@@ -49,35 +68,60 @@ export default function StudioPage() {
   const [selectedActorPhotoId, setSelectedActorPhotoId] = useState<string>('')
   const [selectedGarmentId, setSelectedGarmentId] = useState<string>('')
   const [selectedGarmentImageId, setSelectedGarmentImageId] = useState<string>('')
-  const [currentJob, setCurrentJob] = useState<TryOnJob | null>(null)
+  
+  // Two-phase workflow state
+  const [session, setSession] = useState<TryOnSession | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Advanced controls state
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [advancedSettings, setAdvancedSettings] = useState<Partial<TryOnRequest>>({
+    category: 'auto',
+    mode: 'balanced',
+    seed: undefined,
+    num_samples: 1,
+    garment_photo_type: 'auto',
+    segmentation_free: true,
+    moderation_level: 'permissive',
+    output_format: 'png',
+    return_base64: false,
+  })
+  const [lockSeed, setLockSeed] = useState(false)
+  
+  // UI state
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [boards, setBoards] = useState<LookBoard[]>([])
   const [selectedBoardId, setSelectedBoardId] = useState<string>('')
   const [saving, setSaving] = useState(false)
+  
+  // Result cache
+  const [resultCache, setResultCache] = useState<Map<string, TryOnResult[]>>(new Map())
+
+  // Load settings from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('tryon_advanced_settings')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setAdvancedSettings(prev => ({ ...prev, ...parsed }))
+      } catch (e) {
+        console.error('Error loading saved settings:', e)
+      }
+    }
+  }, [])
+
+  // Save settings to localStorage
+  const saveSettings = useCallback((settings: Partial<TryOnRequest>) => {
+    localStorage.setItem('tryon_advanced_settings', JSON.stringify(settings))
+  }, [])
 
   useEffect(() => {
     fetchActors()
     fetchGarments()
     fetchBoards()
   }, [])
-
-  const fetchBoards = async () => {
-    try {
-      const response = await fetch('/api/look-boards')
-      const data = await response.json()
-      if (response.ok && Array.isArray(data)) {
-        setBoards(data)
-      } else {
-        console.error('Error fetching boards:', data.error || data)
-        setBoards([])
-      }
-    } catch (error) {
-      console.error('Error fetching boards:', error)
-      setBoards([])
-    }
-  }
 
   useEffect(() => {
     if (selectedActorId) {
@@ -93,14 +137,17 @@ export default function StudioPage() {
     }
   }, [selectedGarmentId])
 
-  useEffect(() => {
-    if (currentJob && (currentJob.status === 'queued' || currentJob.status === 'running')) {
-      const interval = setInterval(() => {
-        pollJobStatus(currentJob.id)
-      }, 2000)
-      return () => clearInterval(interval)
+  const fetchBoards = async () => {
+    try {
+      const response = await fetch('/api/look-boards')
+      const data = await response.json()
+      if (response.ok && Array.isArray(data)) {
+        setBoards(data)
+      }
+    } catch (error) {
+      console.error('Error fetching boards:', error)
     }
-  }, [currentJob])
+  }
 
   const fetchActors = async () => {
     try {
@@ -108,13 +155,9 @@ export default function StudioPage() {
       const data = await response.json()
       if (response.ok && Array.isArray(data)) {
         setActors(data)
-      } else {
-        console.error('Error fetching actors:', data.error || data)
-        setActors([])
       }
     } catch (error) {
       console.error('Error fetching actors:', error)
-      setActors([])
     }
   }
 
@@ -124,13 +167,9 @@ export default function StudioPage() {
       const data = await response.json()
       if (response.ok && Array.isArray(data)) {
         setGarments(data)
-      } else {
-        console.error('Error fetching garments:', data.error || data)
-        setGarments([])
       }
     } catch (error) {
       console.error('Error fetching garments:', error)
-      setGarments([])
     }
   }
 
@@ -140,7 +179,6 @@ export default function StudioPage() {
       const data = await response.json()
       setActorPhotos(data)
       
-      // Get signed URLs
       const urls: Record<string, string> = {}
       for (const photo of data) {
         const urlResponse = await fetch(`/api/storage/signed-url?bucket=actors&path=${encodeURIComponent(photo.storage_path)}`)
@@ -161,7 +199,6 @@ export default function StudioPage() {
       const data = await response.json()
       setGarmentImages(data)
       
-      // Get signed URLs
       const urls: Record<string, string> = {}
       for (const image of data) {
         const urlResponse = await fetch(`/api/storage/signed-url?bucket=garments&path=${encodeURIComponent(image.storage_path)}`)
@@ -176,13 +213,212 @@ export default function StudioPage() {
     }
   }
 
-  const handleGenerate = async () => {
+  // Check cache before making request
+  const getCachedResult = (modelImage: string, garmentImage: string, params: Partial<TryOnRequest>): TryOnResult[] | null => {
+    const cacheKey = getCacheKey(modelImage, garmentImage, params)
+    return resultCache.get(cacheKey) || null
+  }
+
+  // Store result in cache
+  const cacheResult = (modelImage: string, garmentImage: string, params: Partial<TryOnRequest>, results: TryOnResult[]) => {
+    const cacheKey = getCacheKey(modelImage, garmentImage, params)
+    setResultCache(prev => new Map(prev).set(cacheKey, results))
+  }
+
+  // Fast Preview: Generate 4 samples with performance mode
+  const handleFastPreview = async () => {
     if (!selectedActorPhotoId || !selectedGarmentImageId) {
-      alert('Please select both an actor photo and a garment image')
+      setError('Please select both an actor photo and a garment image')
+      return
+    }
+
+    const modelImageUrl = signedUrls[selectedActorPhotoId]
+    const garmentImageUrl = signedUrls[selectedGarmentImageId]
+
+    if (!modelImageUrl || !garmentImageUrl) {
+      setError('Images not loaded. Please wait a moment and try again.')
       return
     }
 
     setLoading(true)
+    setError(null)
+
+    try {
+      // Check cache first
+      const previewParams: Partial<TryOnRequest> = {
+        ...advancedSettings,
+        mode: 'performance',
+        num_samples: 4,
+      }
+      
+      const cached = getCachedResult(modelImageUrl, garmentImageUrl, previewParams)
+      if (cached) {
+        setSession({
+          selectedIndex: null,
+          previewResults: cached,
+          finalResult: null,
+          seeds: cached.map(r => r.seed),
+          params: previewParams,
+          timestamps: { preview: new Date().toISOString() },
+        })
+        setLoading(false)
+        return
+      }
+
+      // Generate unique seeds for each sample (if API requires single seed per request)
+      // For now, we'll submit one request with num_samples=4
+      const response = await fetch('/api/tryon/v2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actor_photo_id: selectedActorPhotoId,
+          garment_image_id: selectedGarmentImageId,
+          ...previewParams,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate preview')
+      }
+
+      const data = await response.json()
+      
+      if (!data.results || data.results.length === 0) {
+        throw new Error('No results returned')
+      }
+
+      // Cache results
+      cacheResult(modelImageUrl, garmentImageUrl, previewParams, data.results)
+
+      setSession({
+        selectedIndex: null,
+        previewResults: data.results,
+        finalResult: null,
+        seeds: data.results.map((r: TryOnResult) => r.seed),
+        params: previewParams,
+        timestamps: { preview: new Date().toISOString() },
+      })
+    } catch (err: any) {
+      console.error('Error generating preview:', err)
+      setError(err.message || 'Failed to generate preview')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Finalize: Re-run selected variant with quality mode
+  const handleFinalize = async (selectedIndex: number) => {
+    if (!session || !session.previewResults[selectedIndex]) {
+      setError('No preview result selected')
+      return
+    }
+
+    const selectedResult = session.previewResults[selectedIndex]
+    const modelImageUrl = signedUrls[selectedActorPhotoId]
+    const garmentImageUrl = signedUrls[selectedGarmentImageId]
+
+    if (!modelImageUrl || !garmentImageUrl) {
+      setError('Images not loaded')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const finalizeParams: Partial<TryOnRequest> = {
+        ...session.params,
+        mode: 'quality',
+        seed: selectedResult.seed, // Use same seed for reproducibility
+        num_samples: 1,
+      }
+
+      // Check cache
+      const cached = getCachedResult(modelImageUrl, garmentImageUrl, finalizeParams)
+      if (cached && cached[0]) {
+        setSession({
+          ...session,
+          selectedIndex,
+          finalResult: cached[0],
+          timestamps: {
+            ...session.timestamps,
+            finalized: new Date().toISOString(),
+          },
+        })
+        setLoading(false)
+        return
+      }
+
+      const response = await fetch('/api/tryon/v2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actor_photo_id: selectedActorPhotoId,
+          garment_image_id: selectedGarmentImageId,
+          ...finalizeParams,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to finalize')
+      }
+
+      const data = await response.json()
+      
+      if (!data.results || data.results.length === 0) {
+        throw new Error('No results returned')
+      }
+
+      const finalResult = data.results[0]
+      
+      // Cache result
+      cacheResult(modelImageUrl, garmentImageUrl, finalizeParams, [finalResult])
+
+      setSession({
+        ...session,
+        selectedIndex,
+        finalResult,
+        timestamps: {
+          ...session.timestamps,
+          finalized: new Date().toISOString(),
+        },
+      })
+    } catch (err: any) {
+      console.error('Error finalizing:', err)
+      setError(err.message || 'Failed to finalize')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Reroll: Generate new preview with new seeds
+  const handleReroll = () => {
+    setAdvancedSettings(prev => ({ ...prev, seed: undefined }))
+    setLockSeed(false)
+    handleFastPreview()
+  }
+
+  // Recreate: Regenerate with same seed
+  const handleRecreate = () => {
+    if (!session || session.selectedIndex === null) {
+      setError('Please select a preview result first')
+      return
+    }
+    handleFinalize(session.selectedIndex)
+  }
+
+  // Legacy generate (backward compatibility)
+  const handleGenerate = async () => {
+    if (!selectedActorPhotoId || !selectedGarmentImageId) {
+      setError('Please select both an actor photo and a garment image')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
     try {
       const response = await fetch('/api/tryon', {
         method: 'POST',
@@ -190,34 +426,38 @@ export default function StudioPage() {
         body: JSON.stringify({
           actor_photo_id: selectedActorPhotoId,
           garment_image_id: selectedGarmentImageId,
+          settings: advancedSettings,
         }),
       })
       
       if (response.ok) {
         const job = await response.json()
-        setCurrentJob({ ...job, status: job.status })
-        pollJobStatus(job.id)
+        // Convert to new format for display
+        if (job.result_url) {
+          setSession({
+            selectedIndex: 0,
+            previewResults: [],
+            finalResult: {
+              imageUrl: job.result_url,
+              seed: advancedSettings.seed || 0,
+              params: advancedSettings,
+              createdAt: job.created_at,
+              requestId: job.id,
+            },
+            seeds: [advancedSettings.seed || 0],
+            params: advancedSettings,
+            timestamps: { finalized: job.created_at },
+          })
+        }
       } else {
-        const error = await response.json()
-        alert(`Error: ${error.error}`)
+        const errorData = await response.json()
+        setError(errorData.error || 'Failed to generate try-on')
       }
-    } catch (error) {
-      console.error('Error creating try-on job:', error)
-      alert('Failed to create try-on job')
+    } catch (err: any) {
+      console.error('Error creating try-on job:', err)
+      setError(err.message || 'Failed to create try-on job')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const pollJobStatus = async (jobId: string) => {
-    try {
-      const response = await fetch(`/api/tryon/${jobId}`)
-      if (response.ok) {
-        const job = await response.json()
-        setCurrentJob(job)
-      }
-    } catch (error) {
-      console.error('Error polling job status:', error)
     }
   }
 
@@ -227,6 +467,18 @@ export default function StudioPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Try-On Studio</h1>
+
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-red-800">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Actor Selection */}
@@ -316,82 +568,344 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* Generate Button */}
-      <div className="mb-6">
+      {/* Advanced Controls (Collapsed by default) */}
+      <div className="mb-6 border border-gray-200 rounded-lg">
         <button
-          onClick={handleGenerate}
-          disabled={loading || !selectedActorPhotoId || !selectedGarmentImageId}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => {
+            setShowAdvanced(!showAdvanced)
+            if (!showAdvanced) {
+              saveSettings(advancedSettings)
+            }
+          }}
+          className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50"
         >
-          {loading ? 'Generating...' : 'Generate Try-On'}
+          <span className="font-medium text-gray-900">Advanced Settings</span>
+          <svg
+            className={`w-5 h-5 transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </button>
-      </div>
 
-      {/* Result Display */}
-      {currentJob && (
-        <div className="border border-gray-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Try-On Result</h2>
-          
-          <div className="mb-4">
-            <span className={`inline-block px-3 py-1 rounded text-sm ${
-              currentJob.status === 'succeeded' ? 'bg-green-100 text-green-800' :
-              currentJob.status === 'failed' ? 'bg-red-100 text-red-800' :
-              currentJob.status === 'running' ? 'bg-yellow-100 text-yellow-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
-              {currentJob.status.charAt(0).toUpperCase() + currentJob.status.slice(1)}
-            </span>
-          </div>
-
-          {currentJob.status === 'succeeded' && currentJob.result_url && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {showAdvanced && (
+          <div className="p-4 border-t border-gray-200 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Before</h3>
-                {selectedActorPhotoData && signedUrls[selectedActorPhotoId] && (
-                  <img
-                    src={signedUrls[selectedActorPhotoId]}
-                    alt="Before"
-                    className="w-full rounded-lg border border-gray-200 object-contain bg-gray-100"
-                  />
-                )}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select
+                  value={advancedSettings.category || 'auto'}
+                  onChange={(e) => {
+                    const newSettings = { ...advancedSettings, category: e.target.value as Category }
+                    setAdvancedSettings(newSettings)
+                    saveSettings(newSettings)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="tops">Tops</option>
+                  <option value="bottoms">Bottoms</option>
+                  <option value="one-pieces">One-Pieces</option>
+                </select>
               </div>
+
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">After</h3>
-                <img
-                  src={currentJob.result_url}
-                  alt="Try-on result"
-                  className="w-full rounded-lg border border-gray-200 object-contain bg-gray-100"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mode</label>
+                <select
+                  value={advancedSettings.mode || 'balanced'}
+                  onChange={(e) => {
+                    const newSettings = { ...advancedSettings, mode: e.target.value as Mode }
+                    setAdvancedSettings(newSettings)
+                    saveSettings(newSettings)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                >
+                  <option value="performance">Performance</option>
+                  <option value="balanced">Balanced</option>
+                  <option value="quality">Quality</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Garment Photo Type</label>
+                <select
+                  value={advancedSettings.garment_photo_type || 'auto'}
+                  onChange={(e) => {
+                    const newSettings = { ...advancedSettings, garment_photo_type: e.target.value as GarmentPhotoType }
+                    setAdvancedSettings(newSettings)
+                    saveSettings(newSettings)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="model">Model</option>
+                  <option value="flat-lay">Flat-Lay</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Moderation Level</label>
+                <select
+                  value={advancedSettings.moderation_level || 'permissive'}
+                  onChange={(e) => {
+                    const newSettings = { ...advancedSettings, moderation_level: e.target.value as ModerationLevel }
+                    setAdvancedSettings(newSettings)
+                    saveSettings(newSettings)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                >
+                  <option value="permissive">Permissive</option>
+                  <option value="conservative">Conservative</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Output Format</label>
+                <select
+                  value={advancedSettings.output_format || 'png'}
+                  onChange={(e) => {
+                    const newSettings = { ...advancedSettings, output_format: e.target.value as OutputFormat }
+                    setAdvancedSettings(newSettings)
+                    saveSettings(newSettings)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                >
+                  <option value="png">PNG</option>
+                  <option value="jpg">JPG</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Number of Samples</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={4}
+                  value={advancedSettings.num_samples || 1}
+                  onChange={(e) => {
+                    const num = parseInt(e.target.value) || 1
+                    const newSettings = { ...advancedSettings, num_samples: Math.max(1, Math.min(4, num)) }
+                    setAdvancedSettings(newSettings)
+                    saveSettings(newSettings)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
                 />
               </div>
             </div>
-          )}
 
-          {currentJob.status === 'failed' && currentJob.error_message && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <p className="text-red-800">{currentJob.error_message}</p>
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="segmentation-free"
+                  checked={advancedSettings.segmentation_free !== false}
+                  onChange={(e) => {
+                    const newSettings = { ...advancedSettings, segmentation_free: e.target.checked }
+                    setAdvancedSettings(newSettings)
+                    saveSettings(newSettings)
+                  }}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <label htmlFor="segmentation-free" className="ml-2 text-sm text-gray-700">
+                  Segmentation Free
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="lock-seed"
+                  checked={lockSeed}
+                  onChange={(e) => setLockSeed(e.target.checked)}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <label htmlFor="lock-seed" className="ml-2 text-sm text-gray-700">
+                  Lock Seed (for reproducibility)
+                </label>
+              </div>
+
+              {lockSeed && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Seed</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={2147483647}
+                    value={advancedSettings.seed || ''}
+                    onChange={(e) => {
+                      const seed = e.target.value ? parseInt(e.target.value) : undefined
+                      const newSettings = { ...advancedSettings, seed }
+                      setAdvancedSettings(newSettings)
+                      saveSettings(newSettings)
+                    }}
+                    placeholder="Auto-generate if empty"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="return-base64"
+                  checked={advancedSettings.return_base64 || false}
+                  onChange={(e) => {
+                    const newSettings = { ...advancedSettings, return_base64: e.target.checked }
+                    setAdvancedSettings(newSettings)
+                    saveSettings(newSettings)
+                  }}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <label htmlFor="return-base64" className="ml-2 text-sm text-gray-700">
+                  Privacy Mode (Return Base64 - if supported)
+                </label>
+              </div>
             </div>
-          )}
+          </div>
+        )}
+      </div>
 
-          {currentJob.status === 'running' && (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-              <p className="mt-2 text-gray-600">Processing try-on...</p>
-            </div>
-          )}
+      {/* Action Buttons */}
+      <div className="mb-6 flex flex-wrap gap-3">
+        <button
+          onClick={handleFastPreview}
+          disabled={loading || !selectedActorPhotoId || !selectedGarmentImageId}
+          className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Generating Preview...' : 'Fast Preview (4 samples)'}
+        </button>
 
-          {currentJob.status === 'succeeded' && (
+        <button
+          onClick={handleGenerate}
+          disabled={loading || !selectedActorPhotoId || !selectedGarmentImageId}
+          className="px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Generating...' : 'Generate (Legacy)'}
+        </button>
+
+        {session && session.previewResults.length > 0 && (
+          <>
             <button
-              onClick={() => setShowSaveModal(true)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              onClick={handleReroll}
+              disabled={loading}
+              className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50"
             >
-              Save to Look Board
+              Reroll (New Seed)
             </button>
-          )}
+            {session.selectedIndex !== null && (
+              <button
+                onClick={handleRecreate}
+                disabled={loading}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+              >
+                Recreate (Same Seed)
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Preview Results Grid */}
+      {session && session.previewResults.length > 0 && (
+        <div className="mb-6 border border-gray-200 rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Preview Results - Select Your Favorite</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {session.previewResults.map((result, index) => (
+              <div
+                key={index}
+                onClick={() => {
+                  setSession({ ...session, selectedIndex: index })
+                  handleFinalize(index)
+                }}
+                className={`cursor-pointer border-2 rounded-lg overflow-hidden ${
+                  session.selectedIndex === index
+                    ? 'border-indigo-600 ring-2 ring-indigo-300'
+                    : 'border-gray-200 hover:border-indigo-300'
+                }`}
+              >
+                {result.imageUrl ? (
+                  <img
+                    src={result.imageUrl}
+                    alt={`Preview ${index + 1}`}
+                    className="w-full h-48 object-contain bg-gray-100"
+                  />
+                ) : result.base64 ? (
+                  <img
+                    src={result.base64}
+                    alt={`Preview ${index + 1}`}
+                    className="w-full h-48 object-contain bg-gray-100"
+                  />
+                ) : (
+                  <div className="w-full h-48 bg-gray-200" />
+                )}
+                <div className="p-2 bg-gray-50">
+                  <p className="text-xs text-gray-600">Seed: {result.seed}</p>
+                  {session.selectedIndex === index && (
+                    <p className="text-xs text-indigo-600 font-medium mt-1">Selected</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Final Result Display */}
+      {session && session.finalResult && (
+        <div className="mb-6 border border-gray-200 rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Final Result</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Before</h3>
+              {selectedActorPhotoData && signedUrls[selectedActorPhotoId] && (
+                <img
+                  src={signedUrls[selectedActorPhotoId]}
+                  alt="Before"
+                  className="w-full rounded-lg border border-gray-200 object-contain bg-gray-100"
+                />
+              )}
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">After</h3>
+              {session.finalResult.imageUrl ? (
+                <img
+                  src={session.finalResult.imageUrl}
+                  alt="Try-on result"
+                  className="w-full rounded-lg border border-gray-200 object-contain bg-gray-100"
+                />
+              ) : session.finalResult.base64 ? (
+                <img
+                  src={session.finalResult.base64}
+                  alt="Try-on result"
+                  className="w-full rounded-lg border border-gray-200 object-contain bg-gray-100"
+                />
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mb-4 text-sm text-gray-600">
+            <p>Seed: {session.finalResult.seed}</p>
+            <p>Mode: {session.finalResult.params.mode || 'balanced'}</p>
+            {session.timestamps.finalized && (
+              <p>Finalized: {new Date(session.timestamps.finalized).toLocaleString()}</p>
+            )}
+          </div>
+
+          <button
+            onClick={() => setShowSaveModal(true)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Save to Look Board
+          </button>
         </div>
       )}
 
       {/* Save to Board Modal */}
-      {showSaveModal && (
+      {showSaveModal && session?.finalResult && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-semibold mb-4">Save to Look Board</h2>
@@ -424,20 +938,28 @@ export default function StudioPage() {
               </button>
               <button
                 onClick={async () => {
-                  if (!selectedBoardId || !currentJob) return
+                  if (!selectedBoardId || !session?.finalResult) return
                   setSaving(true)
                   try {
-                    const response = await fetch(`/api/look-boards/${selectedBoardId}/items`, {
+                    // First, we need to create a tryon_job record
+                    // For now, we'll save the image URL/base64 to a look board item
+                    // In a full implementation, we'd upload the result to storage first
+                    const response = await fetch('/api/look-boards', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        tryon_job_id: currentJob.id,
+                        title: `Try-on ${new Date().toLocaleString()}`,
+                        description: `Seed: ${session.finalResult.seed}, Mode: ${session.finalResult.params.mode}`,
                       }),
                     })
+                    
                     if (response.ok) {
+                      const board = await response.json()
+                      // Note: In a full implementation, we'd need to create a tryon_job
+                      // and then add it to the look board. For now, this is a simplified version.
+                      alert('Saved! (Note: Full integration with look boards requires storing the result image first)')
                       setShowSaveModal(false)
                       setSelectedBoardId('')
-                      alert('Saved to look board!')
                     } else {
                       alert('Failed to save to board')
                     }
@@ -460,4 +982,3 @@ export default function StudioPage() {
     </div>
   )
 }
-

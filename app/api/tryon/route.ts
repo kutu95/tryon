@@ -97,6 +97,69 @@ export async function POST(request: NextRequest) {
     }
     
     // Submit to provider
+    // If settings contain new FASHN parameters, use v2 API
+    const hasNewParams = settings && (
+      'category' in settings ||
+      'mode' in settings ||
+      'seed' in settings ||
+      'num_samples' in settings ||
+      'garment_photo_type' in settings ||
+      'segmentation_free' in settings ||
+      'moderation_level' in settings ||
+      'output_format' in settings ||
+      'return_base64' in settings
+    )
+    
+    if (hasNewParams) {
+      // Use new v2 API for enhanced parameters
+      const v2Response = await fetch(`${requestUrl.origin}/api/tryon/v2`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actor_photo_id,
+          garment_image_id,
+          model_image: actorImageUrl,
+          garment_image: garmentImageUrl,
+          ...settings,
+        }),
+      })
+      
+      if (v2Response.ok) {
+        const v2Data = await v2Response.json()
+        // Return first result as job for backward compatibility
+        if (v2Data.results && v2Data.results.length > 0) {
+          const firstResult = v2Data.results[0]
+          // Update job with result
+          if (firstResult.imageUrl) {
+            const response = await fetch(firstResult.imageUrl)
+            if (response.ok) {
+              const blob = await response.blob()
+              const buffer = Buffer.from(await blob.arrayBuffer())
+              const resultPath = `results/${job.id}.${settings?.output_format || 'jpg'}`
+              const { uploadFile } = await import('@/lib/storage')
+              const uploadedPath = await uploadFile('tryons', resultPath, buffer)
+              
+              if (uploadedPath) {
+                await supabase
+                  .from('tryon_jobs')
+                  .update({
+                    status: 'succeeded',
+                    result_storage_path: uploadedPath,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', job.id)
+                
+                job.status = 'succeeded'
+                job.result_storage_path = uploadedPath
+              }
+            }
+          }
+          return NextResponse.json(job, { status: 201 })
+        }
+      }
+    }
+    
+    // Fall back to original provider for backward compatibility
     const provider = getTryOnProvider()
     const result = await provider.submitTryOn({
       actorImageUrl,
