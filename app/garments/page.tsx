@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 
 interface Garment {
   id: string
@@ -166,11 +165,9 @@ export default function GarmentsPage() {
             className="flex items-center p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
           >
             {primaryImageUrls[garment.id] ? (
-              <Image
+              <img
                 src={primaryImageUrls[garment.id]}
                 alt={garment.name}
-                width={64}
-                height={64}
                 className="w-16 h-16 rounded object-cover mr-4 bg-gray-100"
               />
             ) : (
