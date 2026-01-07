@@ -18,6 +18,7 @@ interface Garment {
     id: string
     storage_path: string
   } | null
+  image_count?: number
 }
 
 export default function GarmentsPage() {
