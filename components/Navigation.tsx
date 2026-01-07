@@ -105,14 +105,17 @@ export function Navigation() {
           </div>
           <div className="flex items-center gap-4">
             {profile && (
-              <div className="flex items-center gap-2">
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
                 <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-semibold">
                   {profile.display_name ? profile.display_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <span className="text-sm font-medium text-gray-700">
                   {profile.display_name || user?.email || 'User'}
                 </span>
-              </div>
+              </Link>
             )}
             <button
               onClick={handleSignOut}
