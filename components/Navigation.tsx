@@ -10,6 +10,7 @@ export function Navigation() {
   const pathname = usePathname()
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -18,16 +19,28 @@ export function Navigation() {
       return
     }
     
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
+    supabase.auth.getUser().then(async ({ data: { user }, error }) => {
       if (error) {
         console.error('Navigation auth check error:', error)
         setUser(null)
+        setUserRole(null)
         return
       }
       setUser(user)
+      
+      // Get user role
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        setUserRole(profile?.role || null)
+      }
     }).catch((error) => {
       console.error('Navigation auth check failed:', error)
       setUser(null)
+      setUserRole(null)
     })
   }, [supabase, pathname])
 
@@ -53,6 +66,11 @@ export function Navigation() {
     { href: '/boards', label: 'Look Boards' },
     { href: '/account', label: 'Account' },
   ]
+
+  // Add admin-only items
+  if (userRole === 'admin') {
+    navItems.push({ href: '/admin/users', label: 'Users' })
+  }
 
   return (
     <nav className="border-b border-gray-200 bg-white">
