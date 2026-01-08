@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
 import { uploadFile, deleteFile } from '@/lib/storage'
+import { processImageForUpload } from '@/lib/server/imageProcessing'
 import { randomUUID } from 'crypto'
 import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 
@@ -17,29 +18,48 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current profile to check for existing picture
-    const { data: currentProfile } = await supabase
+    const { data: currentProfile, error: profileError } = await supabase
       .from('profiles')
       .select('profile_picture_path')
       .eq('id', user.id)
       .single()
+
+    if (profileError) {
+      console.error('[API] Error fetching profile:', profileError)
+      return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 })
+    }
 
     // Delete old profile picture if it exists
     if (currentProfile?.profile_picture_path) {
       await deleteFile('profiles', currentProfile.profile_picture_path)
     }
     
-    // Generate unique path
-    const fileExt = file.name.split('.').pop() || 'jpg'
-    const fileName = `${user.id}/${randomUUID()}.${fileExt}`
-    
     // Convert File to Buffer
     const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
+    const originalBuffer = Buffer.from(arrayBuffer)
     
-    // Upload to storage (create 'profiles' bucket if it doesn't exist)
-    const uploadedPath = await uploadFile('profiles', fileName, buffer)
+    // Process image: convert to PNG and ensure under 4MB
+    let processedBuffer: Buffer
+    try {
+      processedBuffer = await processImageForUpload(originalBuffer)
+    } catch (error: any) {
+      console.error('[API] Error processing image:', error)
+      return NextResponse.json(
+        { error: `Failed to process image: ${error.message}` },
+        { status: 400 }
+      )
+    }
+    
+    // Generate unique path (always PNG after processing)
+    const fileName = `${user.id}/${randomUUID()}.png`
+    
+    // Upload to storage
+    const uploadedPath = await uploadFile('profiles', fileName, processedBuffer)
     if (!uploadedPath) {
-      return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
+      console.error('[API] Failed to upload file to profiles bucket')
+      return NextResponse.json({ 
+        error: 'Failed to upload file. Please ensure the "profiles" storage bucket exists.' 
+      }, { status: 500 })
     }
     
     // Update profile with new picture path
