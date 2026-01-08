@@ -5,6 +5,7 @@ import { runTryOn, type TryOnError } from '@/lib/fashn'
 import { uploadFile } from '@/lib/storage'
 import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 import { type TryOnRequest } from '@/lib/fashn/types'
+import { postprocessTryOnImage, type OpenAIImageOptions } from '@/lib/server/openaiImage'
 
 export const runtime = 'nodejs' // Ensure Node.js runtime
 
@@ -96,7 +97,8 @@ export async function POST(request: NextRequest) {
     
     // Handle async jobs (need to poll for results)
     if (result.isAsync && result.jobId && body.actor_photo_id && body.garment_image_id) {
-      // Create a tryon_job record with status 'running' for async polling
+        // Create a tryon_job record with status 'running' for async polling
+      const openaiPostprocess = body.openaiPostprocess as OpenAIImageOptions | undefined
       const { data: job, error: jobError } = await supabase
         .from('tryon_jobs')
         .insert({
@@ -108,6 +110,7 @@ export async function POST(request: NextRequest) {
           settings: {
             ...tryOnRequest,
             seed: tryOnRequest.seed,
+            openaiPostprocess: openaiPostprocess,
           },
           created_by: user.id,
         })
@@ -149,24 +152,62 @@ export async function POST(request: NextRequest) {
     // Create try-on job records for each result (if using old format)
     if (body.actor_photo_id && body.garment_image_id) {
       const jobs: Array<{ id: string; [key: string]: any }> = []
+      const openaiPostprocess = body.openaiPostprocess as OpenAIImageOptions | undefined
+      
       for (const tryOnResult of result.results) {
         let resultStoragePath: string | null = null
+        let finalImageBuffer: Buffer | null = null
         
-        // Download and store result if it's a URL
+        // Download result image
         if (tryOnResult.imageUrl) {
           try {
             const response = await fetch(tryOnResult.imageUrl)
             if (response.ok) {
               const blob = await response.blob()
-              const buffer = Buffer.from(await blob.arrayBuffer())
-              const resultPath = `results/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${tryOnRequest.output_format}`
-              const uploadedPath = await uploadFile('tryons', resultPath, buffer)
-              if (uploadedPath) {
-                resultStoragePath = uploadedPath
-              }
+              finalImageBuffer = Buffer.from(await blob.arrayBuffer())
             }
           } catch (error) {
-            console.error('Error downloading/storing result:', error)
+            console.error('Error downloading result:', error)
+          }
+        } else if (tryOnResult.base64) {
+          // Handle base64 result
+          const base64Match = tryOnResult.base64.match(/^data:image\/\w+;base64,(.+)$/)
+          if (base64Match) {
+            finalImageBuffer = Buffer.from(base64Match[1], 'base64')
+          }
+        }
+        
+        // Apply OpenAI postprocess if enabled
+        if (openaiPostprocess && finalImageBuffer) {
+          try {
+            console.log('[API/tryon/v2] Applying OpenAI postprocess...')
+            const postprocessOptions: OpenAIImageOptions = {
+              model: openaiPostprocess.model || 'gpt-image-1-mini',
+              quality: openaiPostprocess.quality || 'medium',
+              size: openaiPostprocess.size || '1024x1024',
+              requestId: `postprocess-${Date.now()}`,
+              timeoutMs: 90000,
+              retries: 2,
+              maskExpandPx: openaiPostprocess.maskExpandPx,
+            }
+            finalImageBuffer = await postprocessTryOnImage(finalImageBuffer, postprocessOptions)
+            console.log('[API/tryon/v2] OpenAI postprocess completed')
+          } catch (error: any) {
+            console.error('[API/tryon/v2] OpenAI postprocess failed, using raw FASHN result:', error.message)
+            // Continue with raw FASHN result if postprocess fails
+          }
+        }
+        
+        // Store final result (postprocessed or raw)
+        if (finalImageBuffer) {
+          try {
+            const resultPath = `results/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${tryOnRequest.output_format}`
+            const uploadedPath = await uploadFile('tryons', resultPath, finalImageBuffer)
+            if (uploadedPath) {
+              resultStoragePath = uploadedPath
+            }
+          } catch (error) {
+            console.error('Error storing result:', error)
           }
         }
         

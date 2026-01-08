@@ -23,6 +23,15 @@ interface GarmentImage {
   image_type?: string
   is_primary?: boolean
   tags: string[]
+  metadata?: {
+    source?: string
+    model?: string
+    quality?: string
+    size?: string
+    parentImageId?: string
+    hasTransparency?: boolean
+  }
+  parent_image_id?: string
 }
 
 export default function GarmentDetailPage() {
@@ -40,6 +49,13 @@ export default function GarmentDetailPage() {
   const [editName, setEditName] = useState('')
   const [editCategory, setEditCategory] = useState('')
   const [editNotes, setEditNotes] = useState('')
+  const [tuningImageId, setTuningImageId] = useState<string | null>(null)
+  const [tuningOptions, setTuningOptions] = useState({
+    model: 'gpt-image-1-mini' as 'gpt-image-1-mini' | 'gpt-image-1',
+    quality: 'medium' as 'low' | 'medium' | 'high',
+    size: '1024x1024' as '1024x1024' | '1024x1536' | '1536x1024',
+  })
+  const [tuning, setTuning] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -221,6 +237,44 @@ export default function GarmentDetailPage() {
     }
   }
 
+  const handleTuneImage = async () => {
+    if (!tuningImageId) return
+
+    setTuning(true)
+    try {
+      const response = await fetch(`/api/garments/${params.id}/images/${tuningImageId}/tune`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: tuningOptions.model,
+          quality: tuningOptions.quality,
+          size: tuningOptions.size,
+        }),
+      })
+
+      if (response.ok) {
+        const newImage = await response.json()
+        setTuningImageId(null)
+        fetchImages()
+        // Fetch signed URL for new image
+        const urlResponse = await fetch(`/api/storage/signed-url?bucket=garments&path=${encodeURIComponent(newImage.storage_path)}`)
+        if (urlResponse.ok) {
+          const { url } = await urlResponse.json()
+          setSignedUrls(prev => ({ ...prev, [newImage.id]: url }))
+        }
+        alert('Image tuned successfully!')
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error || 'Failed to tune image'}`)
+      }
+    } catch (error: any) {
+      console.error('Error tuning image:', error)
+      alert(`Failed to tune image: ${error.message || 'Unknown error'}`)
+    } finally {
+      setTuning(false)
+    }
+  }
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>
   }
@@ -363,6 +417,11 @@ export default function GarmentDetailPage() {
                   Primary
                 </span>
               )}
+              {image.metadata?.source === 'openai' && (
+                <span className="bg-green-600 text-white text-xs px-2 py-1 rounded">
+                  {image.metadata.hasTransparency ? 'Cutout' : 'Tuned'}
+                </span>
+              )}
               {image.image_type && (
                 <span className="bg-gray-800 text-white text-xs px-2 py-1 rounded">
                   {image.image_type}
@@ -370,15 +429,24 @@ export default function GarmentDetailPage() {
               )}
             </div>
             <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity space-y-2">
-              {!image.is_primary && (
+              <div className="flex gap-2">
+                {!image.is_primary && (
+                  <button
+                    onClick={() => handleSetPrimary(image.id)}
+                    className="flex-1 px-2 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700"
+                    title="Set as primary image"
+                  >
+                    Set Primary
+                  </button>
+                )}
                 <button
-                  onClick={() => handleSetPrimary(image.id)}
-                  className="w-full px-2 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700"
-                  title="Set as primary image"
+                  onClick={() => setTuningImageId(image.id)}
+                  className="flex-1 px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
+                  title="Tune with OpenAI / Create cutout"
                 >
-                  Set Primary
+                  Tune
                 </button>
-              )}
+              </div>
               <select
                 value={image.image_type || ''}
                 onChange={(e) => handleImageTypeChange(image.id, e.target.value)}
@@ -402,6 +470,78 @@ export default function GarmentDetailPage() {
       {images.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           No images yet. Upload an image to get started.
+        </div>
+      )}
+
+      {/* Tune Image Modal */}
+      {tuningImageId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-semibold mb-4">Tune Image with OpenAI</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  OpenAI Image Model
+                </label>
+                <select
+                  value={tuningOptions.model}
+                  onChange={(e) => setTuningOptions(prev => ({ ...prev, model: e.target.value as 'gpt-image-1-mini' | 'gpt-image-1' }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                >
+                  <option value="gpt-image-1-mini">gpt-image-1-mini (default)</option>
+                  <option value="gpt-image-1">gpt-image-1</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quality
+                </label>
+                <select
+                  value={tuningOptions.quality}
+                  onChange={(e) => setTuningOptions(prev => ({ ...prev, quality: e.target.value as 'low' | 'medium' | 'high' }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium (default)</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Output Size
+                </label>
+                <select
+                  value={tuningOptions.size}
+                  onChange={(e) => setTuningOptions(prev => ({ ...prev, size: e.target.value as '1024x1024' | '1024x1536' | '1536x1024' }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                >
+                  <option value="1024x1024">1024x1024 (default)</option>
+                  <option value="1024x1536">1024x1536</option>
+                  <option value="1536x1024">1536x1024</option>
+                </select>
+              </div>
+              <div className="text-sm text-gray-600">
+                <p className="font-medium mb-1">Note:</p>
+                <p>This will create a clean product cutout with transparent background. The original image will be preserved.</p>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setTuningImageId(null)}
+                disabled={tuning}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTuneImage}
+                disabled={tuning}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+              >
+                {tuning ? 'Tuning...' : 'Create Cutout'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
