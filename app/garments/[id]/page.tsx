@@ -49,14 +49,29 @@ export default function GarmentDetailPage() {
   const [editName, setEditName] = useState('')
   const [editCategory, setEditCategory] = useState('')
   const [editNotes, setEditNotes] = useState('')
+  const [movingImageId, setMovingImageId] = useState<string | null>(null)
+  const [allGarments, setAllGarments] = useState<Garment[]>([])
 
   useEffect(() => {
     if (params.id) {
       fetchUserAndProfile()
       fetchGarment()
       fetchImages()
+      fetchAllGarments()
     }
   }, [params.id])
+
+  const fetchAllGarments = async () => {
+    try {
+      const response = await fetch('/api/garments')
+      const data = await response.json()
+      if (response.ok && Array.isArray(data)) {
+        setAllGarments(data.filter((g: Garment) => g.id !== params.id)) // Exclude current garment
+      }
+    } catch (error) {
+      console.error('Error fetching garments:', error)
+    }
+  }
 
   const fetchUserAndProfile = async () => {
     try {
@@ -230,6 +245,30 @@ export default function GarmentDetailPage() {
     }
   }
 
+  const handleMoveImage = async (targetGarmentId: string) => {
+    if (!movingImageId) return
+
+    try {
+      const response = await fetch(`/api/garments/${params.id}/images/${movingImageId}/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_garment_id: targetGarmentId }),
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to move image')
+      }
+      
+      setMovingImageId(null)
+      fetchImages() // Refresh images (moved image will be gone)
+      alert('Image moved successfully!')
+    } catch (error: any) {
+      console.error('Error moving image:', error)
+      alert(`Error moving image: ${error.message || 'Unknown error'}`)
+    }
+  }
+
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>
@@ -390,6 +429,15 @@ export default function GarmentDetailPage() {
                     Set Primary
                   </button>
                 )}
+                {canEdit && (
+                  <button
+                    onClick={() => setMovingImageId(image.id)}
+                    className="flex-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                    title="Move to another garment"
+                  >
+                    Move
+                  </button>
+                )}
               </div>
               <select
                 value={image.image_type || ''}
@@ -417,6 +465,46 @@ export default function GarmentDetailPage() {
         </div>
       )}
 
+      {/* Move Image Modal */}
+      {movingImageId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-semibold mb-4">Move Image to Another Garment</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Target Garment
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleMoveImage(e.target.value)
+                    }
+                  }}
+                >
+                  <option value="">Choose a garment...</option>
+                  {allGarments.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setMovingImageId(null)}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
