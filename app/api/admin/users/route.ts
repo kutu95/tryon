@@ -82,6 +82,7 @@ export async function GET() {
         created_at: user.created_at,
         role: profile?.role || 'viewer',
         display_name: profile?.display_name || user.email,
+        profile_picture_path: profile?.profile_picture_path || null,
         profile_created_at: profile?.created_at,
       }
     })
