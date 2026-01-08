@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { analyzePhoto } from '@/lib/photoAnalysis/analyze'
 import { PhotoChecklist } from '@/components/PhotoChecklist'
-import { PhotoAnalysisResult } from '@/lib/photoAnalysis/types'
+import { PhotoQualityBadge } from '@/components/PhotoQualityBadge'
+import type { PhotoAnalysisResult } from '@/lib/photoAnalysis/types'
 
 interface Garment {
   id: string

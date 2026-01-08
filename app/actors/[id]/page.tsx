@@ -3,6 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { analyzePhoto } from '@/lib/photoAnalysis/analyze'
+import { PhotoChecklist } from '@/components/PhotoChecklist'
+import { PhotoQualityBadge } from '@/components/PhotoQualityBadge'
+import type { PhotoAnalysisResult } from '@/lib/photoAnalysis/types'
 
 interface Actor {
   id: string
