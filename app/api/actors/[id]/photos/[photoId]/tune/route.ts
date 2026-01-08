@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth'
 import { downloadFile, uploadFile } from '@/lib/storage'
 import { tuneActorPhoto, type OpenAIImageOptions } from '@/lib/server/openaiImage'
 import { processImageForUpload } from '@/lib/server/imageProcessing'
+import sharp from 'sharp'
 import { randomUUID } from 'crypto'
 
 export const runtime = 'nodejs' // Ensure Node.js runtime for OpenAI
@@ -50,10 +51,33 @@ export async function POST(
     // Process image to ensure RGBA format and under 4MB (in case it's an old upload)
     const imageBuffer = await processImageForUpload(originalBuffer)
     
+    // Calculate aspect ratio from processed image to match OpenAI size parameter
+    const imageMetadata = await sharp(imageBuffer).metadata()
+    const imageWidth = imageMetadata.width || 1024
+    const imageHeight = imageMetadata.height || 1024
+    const aspectRatio = imageWidth / imageHeight
+    
+    // Select size parameter that best matches the image aspect ratio
+    // OpenAI sizes: '1024x1024' (1:1), '1024x1536' (2:3 portrait), '1536x1024' (3:2 landscape)
+    let selectedSize: '1024x1024' | '1024x1536' | '1536x1024' = openaiOptions.size || '1024x1024'
+    if (aspectRatio > 1.2) {
+      // Landscape: use 3:2 ratio
+      selectedSize = '1536x1024'
+    } else if (aspectRatio < 0.8) {
+      // Portrait: use 2:3 ratio
+      selectedSize = '1024x1536'
+    } else {
+      // Square-ish: use 1:1 ratio
+      selectedSize = '1024x1024'
+    }
+    
+    // Override the size option with the calculated one
+    const finalOptions = { ...openaiOptions, size: selectedSize }
+    
     // Tune the photo with OpenAI
     let tunedBuffer: Buffer
     try {
-      tunedBuffer = await tuneActorPhoto(imageBuffer, openaiOptions)
+      tunedBuffer = await tuneActorPhoto(imageBuffer, finalOptions)
     } catch (error: any) {
       console.error('[API] Error tuning actor photo:', error)
       return NextResponse.json(
