@@ -7,8 +7,6 @@ A web application for costume styling that enables virtual try-on visualization.
 - **Actor Management**: Upload and manage actor photos
 - **Garment Management**: Upload and manage garment images with categories
 - **Virtual Try-On**: Generate 2D try-on previews using a swappable provider system
-- **OpenAI Image Tuning**: Optional preprocessing for actor and garment photos (exposure, white balance, background cleanup, product cutouts)
-- **OpenAI Postprocessing**: Optional artifact fixing for try-on results
 - **Look Boards**: Organize and compare try-on results
 - **Role-Based Access**: Admin, Stylist, and Viewer roles with appropriate permissions
 - **Private Storage**: All images stored in private Supabase buckets with signed URLs
@@ -68,12 +66,9 @@ For each bucket:
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
    TRYON_PROVIDER=stub
-   OPENAI_API_KEY=your_openai_api_key  # Optional: for image tuning and postprocessing
    ```
 
    **Important**: Never commit `.env.local` to version control. The service role key has admin access.
-   
-   **OpenAI API Key (Optional)**: If you want to use OpenAI for image tuning and postprocessing, add your OpenAI API key. Without it, the tuning and postprocess features will be disabled.
 
 ### 5. Install Dependencies
 
@@ -98,7 +93,7 @@ If you're using Supabase CLI or need to run additional migrations:
 supabase migration up
 ```
 
-The migration `014_add_photo_metadata.sql` adds metadata fields to `actor_photos` and `garment_images` tables for storing OpenAI tuning information.
+The migration `014_add_photo_metadata.sql` adds metadata fields to `actor_photos` and `garment_images` tables.
 
 ### 8. Create Your First User
 
@@ -163,8 +158,6 @@ To add a new provider:
 - `GET /api/look-boards/[id]` - Get look board
 - `GET /api/look-boards/[id]/items` - Get look board items
 - `POST /api/look-boards/[id]/items` - Add item to look board
-- `POST /api/actors/[id]/photos/[photoId]/tune` - Tune actor photo with OpenAI
-- `POST /api/garments/[id]/images/[imageId]/tune` - Tune garment image with OpenAI (create cutout)
 
 ## Security
 
@@ -206,49 +199,6 @@ This application can be deployed to Vercel:
 4. Deploy
 
 Make sure to set all environment variables in your deployment platform.
-
-## OpenAI Integration
-
-The application supports optional OpenAI image generation/editing for:
-
-1. **Actor Photo Tuning**: Improve actor photos for virtual try-on catalogs
-   - Corrects exposure and white balance
-   - Reduces noise
-   - Optionally simplifies background to neutral studio-like background
-   - Preserves person identity, pose, and appearance
-   - Access via "Tune" button on actor photo detail page
-
-2. **Garment Photo Tuning**: Create clean product cutouts
-   - Removes background completely (transparent)
-   - Preserves exact garment shape, textures, and details
-   - Access via "Tune" button on garment image detail page
-
-3. **Try-On Postprocessing**: Fix minor artifacts in try-on results
-   - Fixes jagged edges, halos, seam blending issues
-   - Preserves garment design, fit, and pose
-   - Access via "Advanced (OpenAI Postprocess)" section on Studio page
-
-### How to Use OpenAI Features
-
-1. **Tune Actor Photos**:
-   - Navigate to an Actor detail page
-   - Hover over a photo and click "Tune"
-   - Select model, quality, and output size
-   - Click "Tune Photo" to create a tuned variant
-
-2. **Tune Garment Images**:
-   - Navigate to a Garment detail page
-   - Hover over an image and click "Tune"
-   - Select model, quality, and output size
-   - Click "Create Cutout" to create a transparent-background variant
-
-3. **Postprocess Try-On Results**:
-   - On the Studio page, expand "Advanced (OpenAI Postprocess)"
-   - Enable "Use OpenAI postprocess"
-   - Configure model, quality, size, and mask expansion
-   - Generate try-on as usual - postprocessing will be applied automatically
-
-**Note**: All tuned variants are saved as new photos/images and do not overwrite originals. Tuned photos are marked with a "Tuned" or "Cutout" badge.
 
 ## Future Enhancements
 
