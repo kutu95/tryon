@@ -1,5 +1,8 @@
 'use client'
 
+import { PhotoQualityBadge } from '@/components/PhotoQualityBadge'
+import { PhotoAnalysisResult } from '@/lib/photoAnalysis/types'
+
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { TryOnRequest, TryOnResult, Category, Mode, GarmentPhotoType, ModerationLevel, OutputFormat } from '@/lib/fashn/types'
@@ -14,6 +17,10 @@ interface ActorPhoto {
   actor_id: string
   storage_path: string
   actor?: Actor
+  metadata?: {
+    qualityAnalysis?: PhotoAnalysisResult
+    [key: string]: any
+  }
 }
 
 interface Garment {
@@ -27,6 +34,10 @@ interface GarmentImage {
   storage_path: string
   image_type?: string
   garment?: Garment
+  metadata?: {
+    qualityAnalysis?: PhotoAnalysisResult
+    [key: string]: any
+  }
 }
 
 interface LookBoard {
@@ -725,12 +736,35 @@ export default function StudioPage() {
           </select>
 
           {selectedActorId && (
-            <div className="grid grid-cols-2 gap-2">
-              {actorPhotos.map((photo) => (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={showRecommendedOnly}
+                    onChange={(e) => setShowRecommendedOnly(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span>Recommended only (pass status)</span>
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {actorPhotos
+                  .filter((photo) => {
+                    if (!showRecommendedOnly) return true
+                    const analysis = photo.metadata?.qualityAnalysis
+                    return analysis && analysis.status === 'pass'
+                  })
+                  .sort((a, b) => {
+                    const scoreA = a.metadata?.qualityAnalysis?.score ?? 0
+                    const scoreB = b.metadata?.qualityAnalysis?.score ?? 0
+                    return scoreB - scoreA // Sort best first
+                  })
+                  .map((photo) => (
                 <div
                   key={photo.id}
                   onClick={() => setSelectedActorPhotoId(photo.id)}
-                  className={`cursor-pointer border-2 rounded-lg overflow-hidden ${
+                  className={`cursor-pointer border-2 rounded-lg overflow-hidden relative ${
                     selectedActorPhotoId === photo.id
                       ? 'border-indigo-600'
                       : 'border-gray-200'
@@ -745,8 +779,14 @@ export default function StudioPage() {
                   ) : (
                     <div className="w-full h-48 bg-gray-200" />
                   )}
+                  {photo.metadata?.qualityAnalysis && (
+                    <div className="absolute top-1 right-1">
+                      <PhotoQualityBadge analysis={photo.metadata.qualityAnalysis} size="sm" />
+                    </div>
+                  )}
                 </div>
-              ))}
+                  ))}
+              </div>
             </div>
           )}
         </div>
@@ -768,12 +808,35 @@ export default function StudioPage() {
           </select>
 
           {selectedGarmentId && (
-            <div className="grid grid-cols-2 gap-2">
-              {garmentImages.map((image) => (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={showRecommendedOnly}
+                    onChange={(e) => setShowRecommendedOnly(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span>Recommended only (pass status)</span>
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {garmentImages
+                  .filter((image) => {
+                    if (!showRecommendedOnly) return true
+                    const analysis = image.metadata?.qualityAnalysis
+                    return analysis && analysis.status === 'pass'
+                  })
+                  .sort((a, b) => {
+                    const scoreA = a.metadata?.qualityAnalysis?.score ?? 0
+                    const scoreB = b.metadata?.qualityAnalysis?.score ?? 0
+                    return scoreB - scoreA // Sort best first
+                  })
+                  .map((image) => (
                 <div
                   key={image.id}
                   onClick={() => setSelectedGarmentImageId(image.id)}
-                  className={`cursor-pointer border-2 rounded-lg overflow-hidden ${
+                  className={`cursor-pointer border-2 rounded-lg overflow-hidden relative ${
                     selectedGarmentImageId === image.id
                       ? 'border-indigo-600'
                       : 'border-gray-200'
@@ -788,8 +851,14 @@ export default function StudioPage() {
                   ) : (
                     <div className="w-full h-48 bg-gray-200" />
                   )}
+                  {image.metadata?.qualityAnalysis && (
+                    <div className="absolute top-1 right-1">
+                      <PhotoQualityBadge analysis={image.metadata.qualityAnalysis} size="sm" />
+                    </div>
+                  )}
                 </div>
-              ))}
+                  ))}
+              </div>
             </div>
           )}
         </div>

@@ -27,6 +27,7 @@ interface ActorPhoto {
     quality?: string
     size?: string
     parentPhotoId?: string
+    qualityAnalysis?: PhotoAnalysisResult
   }
   parent_photo_id?: string
 }
@@ -45,6 +46,10 @@ export default function ActorDetailPage() {
   const [editName, setEditName] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null)
+  const [uploadingFile, setUploadingFile] = useState<File | null>(null)
+  const [uploadAnalysis, setUploadAnalysis] = useState<any>(null)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [showUploadChecklist, setShowUploadChecklist] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -157,43 +162,72 @@ export default function ActorDetailPage() {
     }
   }
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    const fileArray = Array.from(files)
+    // For now, handle first file only (can extend to multiple later)
+    const file = files[0]
+    setUploadingFile(file)
+    setAnalyzing(true)
+    setShowUploadChecklist(true)
+    setUploadAnalysis(null)
+
+    try {
+      // Run analysis
+      const analysis = await analyzePhoto(file, 'actor')
+      setUploadAnalysis(analysis)
+    } catch (error: any) {
+      console.error('Error analyzing photo:', error)
+      // Continue with upload even if analysis fails
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  const handleFileUpload = async (analysisResult?: PhotoAnalysisResult) => {
+    if (!uploadingFile) return
+
     const isFirstUpload = photos.length === 0
 
     try {
-      // Upload all files
-      const uploadPromises = fileArray.map(async (file, index) => {
-        const formData = new FormData()
-        formData.append('file', file)
-        // Set first file as primary if this is the first upload, otherwise false
-        formData.append('is_primary', isFirstUpload && index === 0 ? 'true' : 'false')
-
-        const response = await fetch(`/api/actors/${params.id}/photos`, {
-          method: 'POST',
-          body: formData,
-        })
-        
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(`Failed to upload ${file.name}: ${error.error || 'Unknown error'}`)
-        }
-        
-        return response.json()
-      })
-
-      await Promise.all(uploadPromises)
-      fetchPhotos()
+      const formData = new FormData()
+      formData.append('file', uploadingFile)
+      formData.append('is_primary', isFirstUpload ? 'true' : 'false')
       
-      // Reset the file input
-      e.target.value = ''
+      // Include analysis result in metadata if available
+      if (analysisResult) {
+        formData.append('analysis', JSON.stringify(analysisResult))
+      }
+
+      const response = await fetch(`/api/actors/${params.id}/photos`, {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(`Failed to upload: ${error.error || 'Unknown error'}`)
+      }
+      
+      // Reset state
+      setUploadingFile(null)
+      setUploadAnalysis(null)
+      setShowUploadChecklist(false)
+      fetchPhotos()
     } catch (error: any) {
-      console.error('Error uploading photos:', error)
-      alert(`Error uploading photos: ${error.message || 'Unknown error'}`)
+      console.error('Error uploading photo:', error)
+      alert(`Error uploading photo: ${error.message || 'Unknown error'}`)
     }
+  }
+
+  const handleRetakePhoto = () => {
+    setUploadingFile(null)
+    setUploadAnalysis(null)
+    setShowUploadChecklist(false)
+    // Reset file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    if (fileInput) fileInput.value = ''
   }
 
   const handleSetPrimary = async (photoId: string) => {
@@ -321,7 +355,7 @@ export default function ActorDetailPage() {
           type="file"
           accept="image/*"
           multiple
-          onChange={handleFileUpload}
+          onChange={handleFileSelect}
           className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
         />
       </div>
@@ -341,11 +375,14 @@ export default function ActorDetailPage() {
                 Loading...
               </div>
             )}
-            <div className="absolute top-2 right-2 flex gap-2 z-10">
+            <div className="absolute top-2 right-2 flex gap-2 z-10 flex-wrap">
               {photo.is_primary && (
                 <span className="bg-indigo-600 text-white text-xs px-2 py-1 rounded">
                   Primary
                 </span>
+              )}
+              {photo.metadata?.qualityAnalysis && (
+                <PhotoQualityBadge analysis={photo.metadata.qualityAnalysis} size="sm" />
               )}
             </div>
             <div className="absolute bottom-2 left-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -375,6 +412,67 @@ export default function ActorDetailPage() {
       {photos.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           No photos yet. Upload a photo to get started.
+        </div>
+      )}
+
+      {/* Upload Checklist Modal */}
+      {showUploadChecklist && uploadingFile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Photo Quality Check</h2>
+                <button
+                  onClick={handleRetakePhoto}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Preview */}
+              <div className="mb-4">
+                <img
+                  src={URL.createObjectURL(uploadingFile)}
+                  alt="Preview"
+                  className="max-w-full max-h-64 mx-auto rounded-lg"
+                />
+              </div>
+
+              {/* Checklist */}
+              <PhotoChecklist
+                kind="actor"
+                analysis={uploadAnalysis}
+                isLoading={analyzing}
+                onRetake={handleRetakePhoto}
+                onSaveAnyway={() => handleFileUpload(uploadAnalysis)}
+              />
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={handleRetakePhoto}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleFileUpload(uploadAnalysis)}
+                  className={`flex-1 px-4 py-2 rounded-md text-white ${
+                    uploadAnalysis?.status === 'fail'
+                      ? 'bg-red-600 hover:bg-red-700'
+                      : uploadAnalysis?.status === 'warn'
+                      ? 'bg-yellow-600 hover:bg-yellow-700'
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+                >
+                  {uploadAnalysis?.status === 'fail' ? 'Save Anyway' : 'Save Photo'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

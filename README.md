@@ -6,6 +6,7 @@ A web application for costume styling that enables virtual try-on visualization.
 
 - **Actor Management**: Upload and manage actor photos
 - **Garment Management**: Upload and manage garment images with categories
+- **Photo Quality Analysis**: Automatic quality checks for actor and garment photos with warnings and recommendations
 - **Virtual Try-On**: Generate 2D try-on previews using a swappable provider system
 - **Look Boards**: Organize and compare try-on results
 - **Role-Based Access**: Admin, Stylist, and Viewer roles with appropriate permissions

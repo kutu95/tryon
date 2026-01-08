@@ -70,6 +70,23 @@ export async function POST(
     // Get image dimensions (optional, can be done client-side or with sharp)
     const isPrimary = formData.get('is_primary') === 'true'
     
+    // Get analysis result if provided
+    let analysisResult = null
+    const analysisStr = formData.get('analysis')
+    if (analysisStr && typeof analysisStr === 'string') {
+      try {
+        analysisResult = JSON.parse(analysisStr)
+      } catch (e) {
+        console.warn('Failed to parse analysis result:', e)
+      }
+    }
+    
+    // Build metadata object
+    const metadata: Record<string, any> = {}
+    if (analysisResult) {
+      metadata.qualityAnalysis = analysisResult
+    }
+    
     // Insert record
     const { data, error } = await supabase
       .from('actor_photos')
@@ -77,6 +94,7 @@ export async function POST(
         actor_id: params.id,
         storage_path: uploadedPath,
         is_primary: isPrimary,
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       })
       .select()
       .single()

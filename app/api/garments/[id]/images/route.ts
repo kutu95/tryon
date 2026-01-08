@@ -69,6 +69,23 @@ export async function POST(
     
     const imageType = formData.get('image_type') as string || 'flat_lay'
     
+    // Get analysis result if provided
+    let analysisResult = null
+    const analysisStr = formData.get('analysis')
+    if (analysisStr && typeof analysisStr === 'string') {
+      try {
+        analysisResult = JSON.parse(analysisStr)
+      } catch (e) {
+        console.warn('Failed to parse analysis result:', e)
+      }
+    }
+    
+    // Build metadata object
+    const metadata: Record<string, any> = {}
+    if (analysisResult) {
+      metadata.qualityAnalysis = analysisResult
+    }
+    
     // Insert record
     const { data, error } = await supabase
       .from('garment_images')
@@ -76,6 +93,7 @@ export async function POST(
         garment_id: params.id,
         storage_path: uploadedPath,
         image_type: imageType,
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       })
       .select()
       .single()
