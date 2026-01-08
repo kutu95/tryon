@@ -114,12 +114,13 @@ export async function tuneActorPhoto(
 
       try {
         // OpenAI SDK expects File, Blob, or ArrayBuffer
-        // Convert Buffer to File for Node.js compatibility
-        const imageFile = new File([input], 'image.png', { type: 'image/png' })
+        // Convert Buffer to ArrayBuffer for Node.js compatibility
+        // Buffer implements Uint8Array which can be used as ArrayBufferView
+        const arrayBuffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength)
         
         const response = await client.images.edit({
           model: opts.model,
-          image: imageFile,
+          image: arrayBuffer,
           prompt: prompt,
           n: 1,
           size: opts.size,
@@ -170,12 +171,13 @@ export async function tuneGarmentPhoto(
 
       try {
         // OpenAI SDK expects File, Blob, or ArrayBuffer
-        // Convert Buffer to File for Node.js compatibility
-        const imageFile = new File([input], 'image.png', { type: 'image/png' })
+        // Convert Buffer to ArrayBuffer for Node.js compatibility
+        // Buffer implements Uint8Array which can be used as ArrayBufferView
+        const arrayBuffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength)
         
         const response = await client.images.edit({
           model: opts.model,
-          image: imageFile,
+          image: arrayBuffer,
           prompt: prompt,
           n: 1,
           size: opts.size,
@@ -230,12 +232,13 @@ export async function postprocessTryOnImage(
 
       try {
         // OpenAI SDK expects File, Blob, or ArrayBuffer
-        // Convert Buffer to File for Node.js compatibility
-        const imageFile = new File([input], 'image.png', { type: 'image/png' })
+        // Convert Buffer to ArrayBuffer for Node.js compatibility
+        // Buffer implements Uint8Array which can be used as ArrayBufferView
+        const arrayBuffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength)
         
         const response = await client.images.edit({
           model: opts.model,
-          image: imageFile,
+          image: arrayBuffer,
           prompt: prompt,
           n: 1,
           size: opts.size,
