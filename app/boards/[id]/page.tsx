@@ -46,14 +46,29 @@ export default function BoardDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [movingItemId, setMovingItemId] = useState<string | null>(null)
+  const [allBoards, setAllBoards] = useState<LookBoard[]>([])
 
   useEffect(() => {
     if (params.id) {
       fetchUserAndProfile()
       fetchBoard()
       fetchItems()
+      fetchAllBoards()
     }
   }, [params.id])
+
+  const fetchAllBoards = async () => {
+    try {
+      const response = await fetch('/api/look-boards')
+      const data = await response.json()
+      if (response.ok && Array.isArray(data)) {
+        setAllBoards(data.filter((b: LookBoard) => b.id !== params.id)) // Exclude current board
+      }
+    } catch (error) {
+      console.error('Error fetching boards:', error)
+    }
+  }
 
   const fetchUserAndProfile = async () => {
     try {
@@ -146,6 +161,57 @@ export default function BoardDetailPage() {
     }
   }
 
+  const handleDeleteBoard = async () => {
+    const itemCount = items.length
+    const warningMessage = itemCount > 0
+      ? `Are you sure you want to delete this look board? This will permanently delete the board and all ${itemCount} image${itemCount === 1 ? '' : 's'} in it. This action cannot be undone.`
+      : 'Are you sure you want to delete this look board? This action cannot be undone.'
+    
+    if (!confirm(warningMessage)) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/look-boards/${params.id}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        router.push('/boards')
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error deleting board:', error)
+      alert('Failed to delete board')
+    }
+  }
+
+  const handleMoveItem = async (targetBoardId: string) => {
+    if (!movingItemId) return
+
+    try {
+      const response = await fetch(`/api/look-boards/${params.id}/items/${movingItemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_board_id: targetBoardId }),
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to move item')
+      }
+      
+      setMovingItemId(null)
+      fetchItems() // Refresh items (moved item will be gone)
+      alert('Item moved successfully!')
+    } catch (error: any) {
+      console.error('Error moving item:', error)
+      alert(`Error moving item: ${error.message || 'Unknown error'}`)
+    }
+  }
+
   const canEdit = board && currentUser && (board.created_by === currentUser.id || profile?.role === 'admin')
 
   const fetchItems = async () => {
@@ -229,12 +295,20 @@ export default function BoardDetailPage() {
             )}
           </div>
           {canEdit && !isEditing && (
-            <button
-              onClick={handleEdit}
-              className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              Edit
-            </button>
+            <div className="ml-4 flex gap-2">
+              <button
+                onClick={handleEdit}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              >
+                Edit
+              </button>
+              <button
+                onClick={handleDeleteBoard}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                Delete Board
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -243,13 +317,22 @@ export default function BoardDetailPage() {
         {items.map((item) => (
           <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden relative group">
             {canEdit && (
-              <button
-                onClick={() => handleDeleteItem(item.id)}
-                className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 z-10"
-                title="Delete item"
-              >
-                Delete
-              </button>
+              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <button
+                  onClick={() => setMovingItemId(item.id)}
+                  className="bg-blue-600 text-white text-xs px-2 py-1 rounded hover:bg-blue-700"
+                  title="Move to another board"
+                >
+                  Move
+                </button>
+                <button
+                  onClick={() => handleDeleteItem(item.id)}
+                  className="bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700"
+                  title="Delete item"
+                >
+                  Delete
+                </button>
+              </div>
             )}
             {signedUrls[item.id] ? (
               <div
@@ -318,6 +401,47 @@ export default function BoardDetailPage() {
       {items.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           No items in this board yet. Add try-on results from the Studio.
+        </div>
+      )}
+
+      {/* Move Item Modal */}
+      {movingItemId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-semibold mb-4">Move Item to Another Look Board</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Target Look Board
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleMoveItem(e.target.value)
+                    }
+                  }}
+                >
+                  <option value="">Choose a look board...</option>
+                  {allBoards.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setMovingItemId(null)}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
