@@ -156,12 +156,12 @@ const helpTopics: HelpTopic[] = [
     title: 'How to take the best Garment photos',
     content: (
       <div className="prose max-w-none">
-        <h2 className="text-2xl font-bold mb-4">📸 Garment Photo Guidelines</h2>
-        <p className="text-lg mb-6">How to take the best photos of garments for virtual try-ons</p>
+        <h2 className="text-2xl font-bold mb-4">👕 Garment Photo Guidelines</h2>
+        <p className="text-lg mb-6">How to photograph clothing for the best try-on results</p>
         
         <p className="mb-6">
-          Clear, well-lit garment photos are essential for accurate virtual try-on results.
-          Following these guidelines will help the system understand the garment's shape, texture, and details.
+          Garment photos define how realistic the final try-on looks.
+          Clear shape and texture matter more than styling.
         </p>
 
         <hr className="my-8 border-gray-300" />
@@ -171,11 +171,17 @@ const helpTopics: HelpTopic[] = [
         <div className="space-y-6 mb-8">
           <div>
             <h4 className="text-lg font-semibold mb-2">1. Garment presentation</h4>
-            <ul className="list-disc list-inside space-y-1 mb-3">
-              <li>Lay the garment flat on a plain surface</li>
-              <li>Ensure the garment is fully visible and not wrinkled</li>
-              <li>Straighten out sleeves, collars, and edges</li>
-              <li>Remove any accessories or tags that might confuse the system</li>
+            <p className="mb-3">Choose one of the following (in order of preference):</p>
+            <ol className="list-decimal list-inside space-y-1 mb-3 ml-4">
+              <li>Flat lay on a clean surface</li>
+              <li>Hanging garment (straight, well aligned)</li>
+              <li>Invisible mannequin / ghost mannequin</li>
+            </ol>
+            <p className="mb-2 font-semibold">The garment should be:</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Fully visible</li>
+              <li>Symmetrical</li>
+              <li>Not stretched or twisted</li>
             </ul>
           </div>
 
@@ -184,18 +190,19 @@ const helpTopics: HelpTopic[] = [
           <div>
             <h4 className="text-lg font-semibold mb-2">2. Background</h4>
             <ul className="list-disc list-inside space-y-1 mb-3">
-              <li>Use a plain, contrasting background (white, light gray, or solid color)</li>
-              <li>Ensure the garment stands out clearly from the background</li>
-              <li>Avoid busy patterns or textures in the background</li>
+              <li>Plain background (white, grey, light neutral)</li>
+              <li>High contrast between garment and background</li>
             </ul>
             <div className="bg-red-50 p-4 rounded-lg">
               <p className="font-semibold mb-2 text-red-800">Avoid</p>
               <ul className="list-disc list-inside space-y-1 text-red-700">
-                <li>Cluttered backgrounds</li>
-                <li>Patterns that compete with the garment</li>
-                <li>Reflective surfaces</li>
+                <li>Busy floors or textured walls</li>
+                <li>Backgrounds similar in colour to the garment</li>
               </ul>
             </div>
+            <p className="mt-3 text-sm text-gray-600">
+              Clean backgrounds make cutouts far more accurate.
+            </p>
           </div>
 
           <hr className="my-6 border-gray-300" />
@@ -203,17 +210,16 @@ const helpTopics: HelpTopic[] = [
           <div>
             <h4 className="text-lg font-semibold mb-2">3. Lighting</h4>
             <ul className="list-disc list-inside space-y-1 mb-3">
-              <li>Use even, diffused lighting</li>
-              <li>Natural daylight works very well</li>
-              <li>Avoid harsh shadows or bright spots</li>
-              <li>Ensure all parts of the garment are well-lit</li>
+              <li>Even lighting across the entire garment</li>
+              <li>Soft shadows are OK</li>
+              <li>Show texture clearly</li>
             </ul>
             <div className="bg-red-50 p-4 rounded-lg">
               <p className="font-semibold mb-2 text-red-800">Avoid</p>
               <ul className="list-disc list-inside space-y-1 text-red-700">
                 <li>Strong directional shadows</li>
-                <li>Overexposed or underexposed areas</li>
-                <li>Flash reflections on shiny fabrics</li>
+                <li>Flash hotspots</li>
+                <li>Uneven lighting across sleeves or hems</li>
               </ul>
             </div>
           </div>
@@ -221,57 +227,65 @@ const helpTopics: HelpTopic[] = [
           <hr className="my-6 border-gray-300" />
 
           <div>
-            <h4 className="text-lg font-semibold mb-2">4. Camera angle & framing</h4>
-            <ul className="list-disc list-inside space-y-1 mb-3">
-              <li>Shoot from directly above (top-down view)</li>
-              <li>Keep the camera parallel to the garment</li>
-              <li>Frame the entire garment in the shot</li>
-              <li>Maintain consistent distance from the garment</li>
+            <h4 className="text-lg font-semibold mb-2">4. Garment condition</h4>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Iron or steam before photographing</li>
+              <li>Lay flat and smooth</li>
+              <li>Align sleeves naturally</li>
             </ul>
-            <div className="bg-red-50 p-4 rounded-lg">
-              <p className="font-semibold mb-2 text-red-800">Avoid</p>
-              <ul className="list-disc list-inside space-y-1 text-red-700">
-                <li>Angled shots that distort the garment shape</li>
-                <li>Cropped edges or missing parts</li>
-                <li>Extreme close-ups that lose context</li>
-              </ul>
-            </div>
+            <p className="mt-3 text-sm text-gray-600">
+              Wrinkles confuse fabric edges and seams.
+            </p>
           </div>
 
           <hr className="my-6 border-gray-300" />
 
           <div>
-            <h4 className="text-lg font-semibold mb-2">5. Garment details</h4>
-            <ul className="list-disc list-inside space-y-1 mb-3">
-              <li>Ensure buttons, zippers, and fasteners are visible</li>
-              <li>Show texture and fabric details clearly</li>
-              <li>Include all important design elements (patterns, logos, etc.)</li>
-              <li>For patterned garments, show enough of the pattern to be recognizable</li>
+            <h4 className="text-lg font-semibold mb-2">5. Framing</h4>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Garment fills most of the frame</li>
+              <li>Leave a small margin around edges</li>
+              <li>Don't crop cuffs, hems, collars, or shoulders</li>
             </ul>
           </div>
         </div>
 
         <hr className="my-8 border-gray-300" />
 
-        <h3 className="text-xl font-semibold mb-4">❌ Common problems to avoid</h3>
+        <h3 className="text-xl font-semibold mb-4">❌ What to avoid</h3>
         <ul className="list-disc list-inside space-y-2 mb-8">
-          <li>Wrinkled or folded garments that obscure shape</li>
-          <li>Poor lighting that hides details</li>
-          <li>Backgrounds that blend with the garment</li>
-          <li>Cropped or incomplete garment views</li>
-          <li>Motion blur or camera shake</li>
-          <li>Reflections or glare on shiny fabrics</li>
+          <li>Garments worn by a person (unless unavoidable)</li>
+          <li>Hands holding the garment</li>
+          <li>Folded sleeves or tucked hems</li>
+          <li>Motion blur</li>
+          <li>Low-resolution images</li>
         </ul>
 
         <hr className="my-8 border-gray-300" />
 
         <h3 className="text-xl font-semibold mb-4">⭐ Pro tips</h3>
+        <ul className="list-disc list-inside space-y-2 mb-8">
+          <li>Photograph front view first (most important)</li>
+          <li>Back view can be added as an extra reference</li>
+          <li>Use "Tune with AI / Create cutout" to generate a clean transparent version</li>
+          <li>Always keep the original photo — tuned versions are saved as variants</li>
+        </ul>
+
+        <hr className="my-8 border-gray-300" />
+
+        <h3 className="text-xl font-semibold mb-4">🎯 Why this matters</h3>
+        <p className="mb-4">Virtual try-on AI must:</p>
+        <ul className="list-disc list-inside space-y-2 mb-4">
+          <li>Understand where the body is</li>
+          <li>Understand where the garment is</li>
+          <li>Blend the two without guessing</li>
+        </ul>
+        <p className="mb-2 font-semibold">Good input photos mean:</p>
         <ul className="list-disc list-inside space-y-2">
-          <li>Take multiple photos from different angles and choose the best one</li>
-          <li>Iron or steam the garment before photographing</li>
-          <li>Use the "Tune with AI" option to create clean cutouts with transparent backgrounds</li>
-          <li>Mark your best garment photos as the preferred image for try-ons</li>
-          <li>For complex garments, consider taking detail shots of important features</li>
+          <li>Better fit</li>
+          <li>Fewer hand and sleeve errors</li>
+          <li>More realistic results</li>
+          <li>Less need for manual fixes</li>
         </ul>
       </div>
     ),
