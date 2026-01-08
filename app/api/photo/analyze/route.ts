@@ -120,20 +120,10 @@ export async function POST(request: NextRequest) {
 
     // For garments: Check if person is detected (warn if so)
     if (kind === 'garment') {
-      // Simple heuristic: if center region has person-like brightness patterns
-      const centerRegionBrightness = await analyzeCenterRegion(imageBuffer, metadata.width || width, metadata.height || height)
-      const hasPersonLikePattern = centerRegionBrightness > 0.4 && centerRegionBrightness < 0.7
-
-      if (hasPersonLikePattern) {
-        issues.push({
-          id: 'person-detected-garment',
-          severity: 'warn',
-          message: 'Person detected in garment photo',
-          fix: 'For best results, photograph the garment as a flat lay or on a hanger. Avoid photos of garments being worn.',
-          metric: centerRegionBrightness,
-        })
-      }
-
+      // Note: Simple brightness-based person detection is unreliable and prone to false positives.
+      // We'll skip this check for now. In the future, this could use proper ML-based detection.
+      // For now, we rely on user judgment and other quality checks.
+      
       // Check background contrast (estimate foreground/background separation)
       const contrastScore = await estimateContrast(imageBuffer, metadata.width || width, metadata.height || height)
       metrics.backgroundContrast = contrastScore
