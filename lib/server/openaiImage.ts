@@ -113,11 +113,14 @@ export async function tuneActorPhoto(
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
       try {
-        // OpenAI SDK expects File or Blob
-        // In Node.js, we need to create a Blob from the Buffer
-        // Then create a File from the Blob for the SDK
-        const blob = new Blob([input], { type: 'image/png' })
-        const imageFile = new File([blob], 'image.png', { type: 'image/png' })
+        // OpenAI SDK expects File, Blob, or a compatible Uploadable type
+        // In Node.js, create a File from the Buffer
+        // File is available in Node.js 18+ globally
+        // Use type assertion to work around SDK type checking issues
+        const imageFile = new File([input], 'image.png', { 
+          type: 'image/png',
+          lastModified: Date.now()
+        }) as any
         
         const response = await client.images.edit({
           model: opts.model,
@@ -171,11 +174,14 @@ export async function tuneGarmentPhoto(
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
       try {
-        // OpenAI SDK expects File or Blob
-        // In Node.js, we need to create a Blob from the Buffer
-        // Then create a File from the Blob for the SDK
-        const blob = new Blob([input], { type: 'image/png' })
-        const imageFile = new File([blob], 'image.png', { type: 'image/png' })
+        // OpenAI SDK expects File, Blob, or a compatible Uploadable type
+        // In Node.js, create a File from the Buffer
+        // File is available in Node.js 18+ globally
+        // Use type assertion to work around SDK type checking issues
+        const imageFile = new File([input], 'image.png', { 
+          type: 'image/png',
+          lastModified: Date.now()
+        }) as any
         
         const response = await client.images.edit({
           model: opts.model,
@@ -233,11 +239,14 @@ export async function postprocessTryOnImage(
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
       try {
-        // OpenAI SDK expects File or Blob
-        // In Node.js, we need to create a Blob from the Buffer
-        // Then create a File from the Blob for the SDK
-        const blob = new Blob([input], { type: 'image/png' })
-        const imageFile = new File([blob], 'image.png', { type: 'image/png' })
+        // OpenAI SDK expects File, Blob, or a compatible Uploadable type
+        // In Node.js, create a File from the Buffer
+        // File is available in Node.js 18+ globally
+        // Use type assertion to work around SDK type checking issues
+        const imageFile = new File([input], 'image.png', { 
+          type: 'image/png',
+          lastModified: Date.now()
+        }) as any
         
         const response = await client.images.edit({
           model: opts.model,
