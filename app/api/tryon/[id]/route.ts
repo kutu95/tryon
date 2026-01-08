@@ -45,7 +45,7 @@ export async function GET(
           
           const blob = await response.blob()
           const arrayBuffer = await blob.arrayBuffer()
-          let buffer = Buffer.from(arrayBuffer)
+          let buffer: Buffer = Buffer.from(arrayBuffer)
           
           // Apply OpenAI postprocess if enabled in job settings
           const settings = job.settings as any
@@ -62,7 +62,7 @@ export async function GET(
                 maskExpandPx: settings.openaiPostprocess.maskExpandPx,
               }
               const postprocessedBuffer = await postprocessTryOnImage(buffer, postprocessOptions)
-              buffer = Buffer.from(postprocessedBuffer)
+              buffer = Buffer.from(postprocessedBuffer) as Buffer
               console.log('[Try-on Status] OpenAI postprocess completed')
             } catch (error: any) {
               console.error('[Try-on Status] OpenAI postprocess failed, using raw FASHN result:', error.message)
