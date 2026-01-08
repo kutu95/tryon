@@ -29,65 +29,50 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
   }
   
   // Convert to PNG with RGBA format (required by OpenAI)
-  // Explicitly use toFormat to ensure RGBA with alpha channel
+  // Force RGBA by ensuring alpha channel and using raw RGBA conversion
+  // First ensure we have RGBA channels, then encode as PNG
   let output = await processed
     .ensureAlpha() // Add alpha channel if missing
+    .raw() // Convert to raw RGBA buffer first
+    .toBuffer({ resolveWithObject: true })
+  
+  // Now encode as PNG with explicit RGBA format
+  const { data, info } = output
+  output = await sharp(data, {
+    raw: {
+      width: info.width,
+      height: info.height,
+      channels: 4 // Explicitly RGBA
+    }
+  })
     .toFormat('png', { 
-      quality: 90,
       compressionLevel: 9,
-      palette: false // Force truecolor RGBA, not indexed color
+      palette: false // Force truecolor RGBA
     })
     .toBuffer()
   
-  // Verify the image has 4 channels (RGBA)
-  const outputMetadata = await sharp(output).metadata()
-  if (outputMetadata.channels !== 4) {
-    // Force RGBA conversion if not already 4 channels
-    output = await sharp(output)
-      .ensureAlpha()
-      .toFormat('png', { quality: 90, compressionLevel: 9, palette: false })
-      .toBuffer()
-  }
-  
-  // If still too large, reduce quality progressively
-  let quality = 90
-  while (output.length > MAX_SIZE_BYTES && quality > 50) {
-    quality -= 10
-    output = await sharp(input)
-      .resize(MAX_DIMENSION, MAX_DIMENSION, { fit: 'inside', withoutEnlargement: true })
-      .ensureAlpha()
-      .toFormat('png', { quality, compressionLevel: 9, palette: false })
-      .toBuffer()
-    
-    // Verify RGBA format
-    const checkMetadata = await sharp(output).metadata()
-    if (checkMetadata.channels !== 4) {
-      output = await sharp(output)
-        .ensureAlpha()
-        .toFormat('png', { quality, compressionLevel: 9, palette: false })
-        .toBuffer()
-    }
-  }
-  
-  // If still too large, reduce dimensions
+  // If still too large, reduce dimensions (PNG doesn't have quality setting, only compression level)
   let scale = 0.9
   while (output.length > MAX_SIZE_BYTES && scale > 0.5) {
     const newWidth = Math.floor((metadata.width || 1024) * scale)
     const newHeight = Math.floor((metadata.height || 1024) * scale)
-    output = await sharp(input)
+    
+    const resizedRgba = await sharp(input)
       .resize(newWidth, newHeight, { fit: 'inside', withoutEnlargement: true })
       .ensureAlpha()
-      .toFormat('png', { quality: 80, compressionLevel: 9, palette: false })
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+    
+    output = await sharp(resizedRgba.data, {
+      raw: {
+        width: resizedRgba.info.width,
+        height: resizedRgba.info.height,
+        channels: 4 // Explicitly RGBA
+      }
+    })
+      .png({ compressionLevel: 9 })
       .toBuffer()
     
-    // Verify RGBA format
-    const checkMetadata = await sharp(output).metadata()
-    if (checkMetadata.channels !== 4) {
-      output = await sharp(output)
-        .ensureAlpha()
-        .toFormat('png', { quality: 80, compressionLevel: 9, palette: false })
-        .toBuffer()
-    }
     scale -= 0.1
   }
   
