@@ -113,14 +113,15 @@ export async function tuneActorPhoto(
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
       try {
-        // OpenAI SDK expects File, Blob, or ArrayBuffer
-        // Convert Buffer to ArrayBuffer for Node.js compatibility
-        // Buffer implements Uint8Array which can be used as ArrayBufferView
-        const arrayBuffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength)
+        // OpenAI SDK expects File or Blob
+        // In Node.js, we need to create a Blob from the Buffer
+        // Then create a File from the Blob for the SDK
+        const blob = new Blob([input], { type: 'image/png' })
+        const imageFile = new File([blob], 'image.png', { type: 'image/png' })
         
         const response = await client.images.edit({
           model: opts.model,
-          image: arrayBuffer,
+          image: imageFile,
           prompt: prompt,
           n: 1,
           size: opts.size,
@@ -170,14 +171,15 @@ export async function tuneGarmentPhoto(
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
       try {
-        // OpenAI SDK expects File, Blob, or ArrayBuffer
-        // Convert Buffer to ArrayBuffer for Node.js compatibility
-        // Buffer implements Uint8Array which can be used as ArrayBufferView
-        const arrayBuffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength)
+        // OpenAI SDK expects File or Blob
+        // In Node.js, we need to create a Blob from the Buffer
+        // Then create a File from the Blob for the SDK
+        const blob = new Blob([input], { type: 'image/png' })
+        const imageFile = new File([blob], 'image.png', { type: 'image/png' })
         
         const response = await client.images.edit({
           model: opts.model,
-          image: arrayBuffer,
+          image: imageFile,
           prompt: prompt,
           n: 1,
           size: opts.size,
@@ -231,14 +233,15 @@ export async function postprocessTryOnImage(
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
       try {
-        // OpenAI SDK expects File, Blob, or ArrayBuffer
-        // Convert Buffer to ArrayBuffer for Node.js compatibility
-        // Buffer implements Uint8Array which can be used as ArrayBufferView
-        const arrayBuffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength)
+        // OpenAI SDK expects File or Blob
+        // In Node.js, we need to create a Blob from the Buffer
+        // Then create a File from the Blob for the SDK
+        const blob = new Blob([input], { type: 'image/png' })
+        const imageFile = new File([blob], 'image.png', { type: 'image/png' })
         
         const response = await client.images.edit({
           model: opts.model,
-          image: arrayBuffer,
+          image: imageFile,
           prompt: prompt,
           n: 1,
           size: opts.size,
