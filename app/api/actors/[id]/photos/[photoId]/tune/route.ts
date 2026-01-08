@@ -51,9 +51,12 @@ export async function POST(
     // Process image to ensure RGBA format and under 4MB (in case it's an old upload)
     const imageBuffer = await processImageForUpload(originalBuffer)
     
-    // Don't specify size - let OpenAI preserve original aspect ratio
-    // Remove size from options so aspect ratio is maintained
-    const { size, ...finalOptions } = openaiOptions
+    // Use 'auto' size for gpt-image-1 model to preserve aspect ratio
+    // For gpt-image-1-mini, fall back to square size
+    const finalOptions = {
+      ...openaiOptions,
+      size: openaiOptions.model === 'gpt-image-1' ? 'auto' as const : '1024x1024' as const
+    }
     
     // Tune the photo with OpenAI
     let tunedBuffer: Buffer

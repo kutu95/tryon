@@ -23,7 +23,7 @@ const getOpenAIClient = (): OpenAI | null => {
 export interface OpenAIImageOptions {
   model: 'gpt-image-1-mini' | 'gpt-image-1'
   quality: 'low' | 'medium' | 'high'
-  size: '256x256' | '512x512' | '1024x1024'
+  size?: '256x256' | '512x512' | '1024x1024' | 'auto'
   requestId?: string
   timeoutMs?: number
   retries?: number
@@ -129,11 +129,16 @@ export async function tuneActorPhoto(
           lastModified: Date.now()
         }) as any
         
+        // Use 'auto' size for gpt-image-1 to preserve aspect ratio, or square size for other models
+        const sizeParam = opts.size === 'auto' || (opts.model === 'gpt-image-1' && !opts.size) 
+          ? 'auto' 
+          : (opts.size || '1024x1024')
+        
         const response = await client.images.edit({
           image: imageFile,
           prompt: prompt,
           n: 1,
-          // Don't specify size - let OpenAI preserve original aspect ratio
+          size: sizeParam as any, // 'auto' is valid for gpt-image-1 model
         })
 
         clearTimeout(timeoutId)
@@ -206,11 +211,16 @@ export async function tuneGarmentPhoto(
           lastModified: Date.now()
         }) as any
         
+        // Use 'auto' size for gpt-image-1 to preserve aspect ratio, or square size for other models
+        const sizeParam = opts.size === 'auto' || (opts.model === 'gpt-image-1' && !opts.size) 
+          ? 'auto' 
+          : (opts.size || '1024x1024')
+        
         const response = await client.images.edit({
           image: imageFile,
           prompt: prompt,
           n: 1,
-          // Don't specify size - let OpenAI preserve original aspect ratio
+          size: sizeParam as any, // 'auto' is valid for gpt-image-1 model
         })
 
         clearTimeout(timeoutId)
@@ -272,11 +282,16 @@ export async function postprocessTryOnImage(
           lastModified: Date.now()
         }) as any
         
+        // Use 'auto' size for gpt-image-1 to preserve aspect ratio, or square size for other models
+        const sizeParam = opts.size === 'auto' || (opts.model === 'gpt-image-1' && !opts.size) 
+          ? 'auto' 
+          : (opts.size || '1024x1024')
+        
         const response = await client.images.edit({
           image: imageFile,
           prompt: prompt,
           n: 1,
-          // Don't specify size - let OpenAI preserve original aspect ratio
+          size: sizeParam as any, // 'auto' is valid for gpt-image-1 model
         })
 
         clearTimeout(timeoutId)
