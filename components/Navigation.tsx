@@ -109,6 +109,7 @@ export function Navigation() {
     { href: '/garments', label: 'Garments' },
     { href: '/accessories', label: 'Accessories' },
     { href: '/boards', label: 'Look Boards' },
+    { href: '/help', label: 'Help' },
   ]
 
   const isAdmin = profile?.role === 'admin'
