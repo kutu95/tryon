@@ -3,12 +3,12 @@ import { PhotoKind, PhotoIssue, PhotoAnalysisPartial } from './types'
 // Thresholds (tuneable constants)
 const THRESHOLDS = {
   resolution: {
-    fail: 800,   // long edge < 800px => FAIL
-    warn: 1200,  // long edge < 1200px => WARN
+    fail: 400,   // long edge < 400px => FAIL (lowered from 800)
+    warn: 800,   // long edge < 800px => WARN (lowered from 1200)
   },
   blur: {
     warn: 100,   // variance below this => WARN
-    fail: 50,    // variance below this => FAIL
+    fail: 30,    // variance below this => FAIL (lowered from 50)
   },
   brightness: {
     min: 0.15,   // mean luminance < this => WARN

@@ -21,11 +21,11 @@ const PENALTIES = {
     default: -10,
   },
   fail: {
-    'resolution-too-low': -35,
-    'blur-severe': -30,
-    'no-face-detected': -40,
-    'cropping-severe': -25,
-    default: -30,
+    'resolution-too-low': -25,  // Reduced from -35
+    'blur-severe': -20,         // Reduced from -30
+    'no-face-detected': -30,    // Reduced from -40
+    'cropping-severe': -20,      // Reduced from -25
+    default: -25,                // Reduced from -30
   },
 }
 

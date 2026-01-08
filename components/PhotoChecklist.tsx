@@ -178,15 +178,31 @@ export function PhotoChecklist({
             Retake Photo
           </button>
         )}
-        {onSaveAnyway && analysis.status !== 'pass' && (
+        {onSaveAnyway && (
           <button
             onClick={onSaveAnyway}
-            className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            className={`px-3 py-1.5 text-sm rounded-md ${
+              analysis.status === 'fail'
+                ? 'bg-orange-600 text-white hover:bg-orange-700'
+                : analysis.status === 'warn'
+                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+            }`}
           >
-            Save Anyway
+            {analysis.status === 'fail' 
+              ? 'Save Anyway (Not Recommended)' 
+              : analysis.status === 'warn'
+              ? 'Save Photo (Has Warnings)'
+              : 'Save Photo'}
           </button>
         )}
       </div>
+      {analysis.status === 'fail' && (
+        <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-sm text-orange-800">
+          <p className="font-medium">⚠️ Warning:</p>
+          <p>This photo has quality issues that may affect try-on results. You can still save it, but results may be less accurate.</p>
+        </div>
+      )}
     </div>
   )
 }

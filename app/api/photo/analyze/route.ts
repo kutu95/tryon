@@ -75,10 +75,23 @@ export async function POST(request: NextRequest) {
     const borderEdgeDensity = await analyzeBorderEdges(imageBuffer, metadata.width || width, metadata.height || height, borderWidth)
     metrics.borderEdgeDensity = borderEdgeDensity
 
-    if (borderEdgeDensity > 0.15) {
+    if (borderEdgeDensity > 0.25) {
+      // Only fail for severe cropping (very high edge density at borders)
+      issues.push({
+        id: 'cropping-severe',
+        severity: 'fail',
+        message: kind === 'actor'
+          ? 'Photo appears severely cropped - subject touches image edges'
+          : 'Garment appears severely cropped - edges touch image borders',
+        fix: kind === 'actor'
+          ? 'Ensure the full person is visible with some margin around edges. Avoid cropping hands, head, or body parts.'
+          : 'Ensure the garment has some margin around all edges for better cutout accuracy.',
+        metric: borderEdgeDensity,
+      })
+    } else if (borderEdgeDensity > 0.15) {
       issues.push({
         id: 'cropping-risk',
-        severity: kind === 'actor' ? 'warn' : 'warn',
+        severity: 'warn',
         message: kind === 'actor'
           ? 'Photo may be cropped or subject touches image edges'
           : 'Garment edges may touch image borders',
@@ -99,7 +112,8 @@ export async function POST(request: NextRequest) {
       const centerRegionBrightness = await analyzeCenterRegion(imageBuffer, metadata.width || width, metadata.height || height)
       metrics.centerRegionBrightness = centerRegionBrightness
 
-      if (!hasPersonLikeProportions && centerRegionBrightness < 0.3) {
+      // Only fail if very unlikely to be a person (very strict threshold)
+      if (!hasPersonLikeProportions && centerRegionBrightness < 0.15) {
         issues.push({
           id: 'no-face-detected',
           severity: 'fail',
