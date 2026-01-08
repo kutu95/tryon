@@ -133,7 +133,7 @@ export async function tuneActorPhoto(
           image: imageFile,
           prompt: prompt,
           n: 1,
-          size: opts.size,
+          // Don't specify size - let OpenAI preserve original aspect ratio
         })
 
         clearTimeout(timeoutId)
@@ -210,7 +210,7 @@ export async function tuneGarmentPhoto(
           image: imageFile,
           prompt: prompt,
           n: 1,
-          size: opts.size,
+          // Don't specify size - let OpenAI preserve original aspect ratio
         })
 
         clearTimeout(timeoutId)
@@ -276,7 +276,7 @@ export async function postprocessTryOnImage(
           image: imageFile,
           prompt: prompt,
           n: 1,
-          size: opts.size,
+          // Don't specify size - let OpenAI preserve original aspect ratio
         })
 
         clearTimeout(timeoutId)
