@@ -16,7 +16,10 @@ const TARGET_MAX_DIMENSION = 2048 // Target max dimension for OpenAI (smaller = 
 export async function processImageForUpload(input: Buffer): Promise<Buffer> {
   let processed = sharp(input)
   
-  // Get image metadata
+  // Auto-rotate based on EXIF orientation (if present)
+  processed = processed.rotate() // Auto-rotates based on EXIF data
+  
+  // Get image metadata after rotation
   const metadata = await processed.metadata()
   const currentWidth = metadata.width || 0
   const currentHeight = metadata.height || 0
@@ -39,13 +42,14 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
   // Convert to PNG with RGBA format (required by OpenAI)
   // Force RGBA by ensuring alpha channel and using raw RGBA conversion
   // First ensure we have RGBA channels, then encode as PNG
+  // Preserve aspect ratio and orientation
   const rgbaBuffer = await processed
     .ensureAlpha() // Add alpha channel if missing
     .raw() // Convert to raw RGBA buffer first
     .toBuffer({ resolveWithObject: true })
   
   // Now encode as PNG with explicit RGBA format (4 channels)
-  // Use compression level 6 for better size/quality balance (level 9 can be larger)
+  // Preserve original dimensions to maintain aspect ratio
   let output = await sharp(rgbaBuffer.data, {
     raw: {
       width: rgbaBuffer.info.width,
@@ -66,6 +70,7 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
     targetSize = Math.floor(targetSize * 0.85) // Reduce by 15% each time
     
     const resizedRgba = await sharp(input)
+      .rotate() // Auto-rotate based on EXIF
       .resize(targetSize, targetSize, { fit: 'inside', withoutEnlargement: true })
       .ensureAlpha()
       .raw()
@@ -85,6 +90,7 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
   // Last resort: use even smaller dimensions if still too large
   if (output.length > MAX_SIZE_BYTES) {
     const finalRgba = await sharp(input)
+      .rotate() // Auto-rotate based on EXIF
       .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
       .ensureAlpha()
       .raw()
