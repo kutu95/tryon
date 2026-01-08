@@ -114,10 +114,10 @@ export async function tuneActorPhoto(
 
       try {
         // OpenAI SDK expects File, Blob, or a compatible Uploadable type
-        // In Node.js, create a File from the Buffer
+        // In Node.js, convert Buffer to Uint8Array for File constructor
         // File is available in Node.js 18+ globally
-        // Use type assertion to work around SDK type checking issues
-        const imageFile = new File([input], 'image.png', { 
+        const uint8Array = new Uint8Array(input)
+        const imageFile = new File([uint8Array], 'image.png', { 
           type: 'image/png',
           lastModified: Date.now()
         }) as any
@@ -175,10 +175,10 @@ export async function tuneGarmentPhoto(
 
       try {
         // OpenAI SDK expects File, Blob, or a compatible Uploadable type
-        // In Node.js, create a File from the Buffer
+        // In Node.js, convert Buffer to Uint8Array for File constructor
         // File is available in Node.js 18+ globally
-        // Use type assertion to work around SDK type checking issues
-        const imageFile = new File([input], 'image.png', { 
+        const uint8Array = new Uint8Array(input)
+        const imageFile = new File([uint8Array], 'image.png', { 
           type: 'image/png',
           lastModified: Date.now()
         }) as any
@@ -240,10 +240,10 @@ export async function postprocessTryOnImage(
 
       try {
         // OpenAI SDK expects File, Blob, or a compatible Uploadable type
-        // In Node.js, create a File from the Buffer
+        // In Node.js, convert Buffer to Uint8Array for File constructor
         // File is available in Node.js 18+ globally
-        // Use type assertion to work around SDK type checking issues
-        const imageFile = new File([input], 'image.png', { 
+        const uint8Array = new Uint8Array(input)
+        const imageFile = new File([uint8Array], 'image.png', { 
           type: 'image/png',
           lastModified: Date.now()
         }) as any
