@@ -24,15 +24,16 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
   const currentWidth = metadata.width || 0
   const currentHeight = metadata.height || 0
   
-  // Resize if too large - use smaller target dimension for better compression
+  // Resize if too large - preserve aspect ratio
   const targetDimension = Math.min(MAX_DIMENSION, TARGET_MAX_DIMENSION)
   if (currentWidth > targetDimension || currentHeight > targetDimension) {
+    // Preserve aspect ratio by using fit: 'inside'
     processed = processed.resize(targetDimension, targetDimension, {
       fit: 'inside',
       withoutEnlargement: true,
     })
   } else if (currentWidth > TARGET_MAX_DIMENSION || currentHeight > TARGET_MAX_DIMENSION) {
-    // Even if under max, resize to target for better file size
+    // Even if under max, resize to target for better file size, preserving aspect ratio
     processed = processed.resize(TARGET_MAX_DIMENSION, TARGET_MAX_DIMENSION, {
       fit: 'inside',
       withoutEnlargement: true,
@@ -65,13 +66,29 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
   let attempts = 0
   const maxAttempts = 20
   
+  // Calculate aspect ratio from original metadata (after rotation)
+  const aspectRatio = metadata.width && metadata.height ? metadata.width / metadata.height : 1
+  
   while (output.length > MAX_SIZE_BYTES && targetSize >= 512 && attempts < maxAttempts) {
     attempts++
     targetSize = Math.floor(targetSize * 0.85) // Reduce by 15% each time
     
+    // Calculate dimensions preserving aspect ratio
+    let resizeWidth = targetSize
+    let resizeHeight = targetSize
+    if (aspectRatio > 1) {
+      // Landscape: width is larger
+      resizeWidth = targetSize
+      resizeHeight = Math.floor(targetSize / aspectRatio)
+    } else if (aspectRatio < 1) {
+      // Portrait: height is larger
+      resizeWidth = Math.floor(targetSize * aspectRatio)
+      resizeHeight = targetSize
+    }
+    
     const resizedRgba = await sharp(input)
       .rotate() // Auto-rotate based on EXIF
-      .resize(targetSize, targetSize, { fit: 'inside', withoutEnlargement: true })
+      .resize(resizeWidth, resizeHeight, { fit: 'inside', withoutEnlargement: true })
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true })
@@ -87,11 +104,24 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
       .toBuffer()
   }
   
-  // Last resort: use even smaller dimensions if still too large
+  // Last resort: use even smaller dimensions if still too large, preserving aspect ratio
   if (output.length > MAX_SIZE_BYTES) {
+    // Calculate final dimensions preserving aspect ratio
+    let finalWidth = 1024
+    let finalHeight = 1024
+    if (aspectRatio > 1) {
+      // Landscape
+      finalWidth = 1024
+      finalHeight = Math.floor(1024 / aspectRatio)
+    } else if (aspectRatio < 1) {
+      // Portrait
+      finalWidth = Math.floor(1024 * aspectRatio)
+      finalHeight = 1024
+    }
+    
     const finalRgba = await sharp(input)
       .rotate() // Auto-rotate based on EXIF
-      .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+      .resize(finalWidth, finalHeight, { fit: 'inside', withoutEnlargement: true })
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true })
