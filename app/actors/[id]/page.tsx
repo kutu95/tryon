@@ -53,6 +53,7 @@ export default function ActorDetailPage() {
     lightTouch: true,
   })
   const [tuning, setTuning] = useState(false)
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (params.id) {
@@ -61,6 +62,17 @@ export default function ActorDetailPage() {
       fetchPhotos()
     }
   }, [params.id])
+
+  // Handle ESC key to close photo viewer
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedPhotoUrl) {
+        setSelectedPhotoUrl(null)
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [selectedPhotoUrl])
 
   const fetchUserAndProfile = async () => {
     try {
@@ -367,7 +379,8 @@ export default function ActorDetailPage() {
               <img
                 src={signedUrls[photo.id]}
                 alt={`${actor.name} photo`}
-                className="w-full h-64 object-contain bg-gray-100"
+                className="w-full h-64 object-contain bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setSelectedPhotoUrl(signedUrls[photo.id])}
               />
             ) : (
               <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
@@ -436,6 +449,28 @@ export default function ActorDetailPage() {
       {photos.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           No photos yet. Upload a photo to get started.
+        </div>
+      )}
+
+      {/* Full Size Photo Modal */}
+      {selectedPhotoUrl && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedPhotoUrl(null)}
+        >
+          <button
+            onClick={() => setSelectedPhotoUrl(null)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 text-4xl font-bold z-10 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center"
+            aria-label="Close"
+          >
+            ×
+          </button>
+          <img
+            src={selectedPhotoUrl}
+            alt={`${actor.name} - Full size`}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
 
