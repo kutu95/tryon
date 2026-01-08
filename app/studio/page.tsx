@@ -25,6 +25,7 @@ interface GarmentImage {
   id: string
   garment_id: string
   storage_path: string
+  image_type?: string
   garment?: Garment
 }
 
@@ -56,6 +57,20 @@ function getCacheKey(modelImage: string, garmentImage: string, params: Partial<T
     params.num_samples || 1,
   ]
   return btoa(keyParts.join('|')).substring(0, 64)
+}
+
+// Map garment image_type to garment_photo_type for try-on
+function mapImageTypeToGarmentPhotoType(imageType?: string): GarmentPhotoType {
+  if (!imageType) return 'auto'
+  
+  switch (imageType.toLowerCase()) {
+    case 'flat_lay':
+      return 'flat-lay'
+    case 'on_model':
+      return 'model'
+    default:
+      return 'auto'
+  }
 }
 
 export default function StudioPage() {
@@ -258,6 +273,15 @@ export default function StudioPage() {
     setError(null)
 
     try {
+      // Get selected garment image to check its image_type
+      const selectedGarmentImage = garmentImages.find(img => img.id === selectedGarmentImageId)
+      
+      // Determine garment_photo_type: use from settings if not 'auto', otherwise derive from image_type
+      let garmentPhotoType = advancedSettings.garment_photo_type || 'auto'
+      if (garmentPhotoType === 'auto' && selectedGarmentImage?.image_type) {
+        garmentPhotoType = mapImageTypeToGarmentPhotoType(selectedGarmentImage.image_type)
+      }
+      
       // Check cache first
       // Use num_samples from advancedSettings, default to 1 if not set
       const numSamples = advancedSettings.num_samples || 1
@@ -265,6 +289,7 @@ export default function StudioPage() {
         ...advancedSettings,
         mode: 'performance',
         num_samples: numSamples,
+        garment_photo_type: garmentPhotoType,
       }
       
       const cached = getCachedResult(modelImageUrl, garmentImageUrl, previewParams)
@@ -423,11 +448,21 @@ export default function StudioPage() {
     setError(null)
 
     try {
+      // Get selected garment image to check its image_type
+      const selectedGarmentImage = garmentImages.find(img => img.id === selectedGarmentImageId)
+      
+      // Determine garment_photo_type: use from session params if not 'auto', otherwise derive from image_type
+      let garmentPhotoType = session.params.garment_photo_type || 'auto'
+      if (garmentPhotoType === 'auto' && selectedGarmentImage?.image_type) {
+        garmentPhotoType = mapImageTypeToGarmentPhotoType(selectedGarmentImage.image_type)
+      }
+      
       const finalizeParams: Partial<TryOnRequest> = {
         ...session.params,
         mode: 'quality',
         seed: selectedResult.seed, // Use same seed for reproducibility
         num_samples: 1,
+        garment_photo_type: garmentPhotoType,
       }
 
       // Check cache
