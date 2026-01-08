@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
 import { uploadFile } from '@/lib/storage'
+import { processImageForUpload } from '@/lib/server/imageProcessing'
 import { randomUUID } from 'crypto'
 
 export async function GET(
@@ -40,17 +41,28 @@ export async function POST(
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
     
-    // Generate unique path
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${randomUUID()}.${fileExt}`
+    // Generate unique path (always PNG after processing)
+    const fileName = `${randomUUID()}.png`
     const storagePath = `${params.id}/${fileName}`
     
     // Convert File to Buffer
     const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
+    const originalBuffer = Buffer.from(arrayBuffer)
+    
+    // Process image: convert to PNG and ensure under 4MB
+    let processedBuffer: Buffer
+    try {
+      processedBuffer = await processImageForUpload(originalBuffer)
+    } catch (error: any) {
+      console.error('[API] Error processing image:', error)
+      return NextResponse.json(
+        { error: `Failed to process image: ${error.message}` },
+        { status: 400 }
+      )
+    }
     
     // Upload to storage
-    const uploadedPath = await uploadFile('garments', storagePath, buffer)
+    const uploadedPath = await uploadFile('garments', storagePath, processedBuffer)
     if (!uploadedPath) {
       return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
     }
