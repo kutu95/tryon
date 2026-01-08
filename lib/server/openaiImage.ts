@@ -225,12 +225,28 @@ export async function tuneGarmentPhoto(
       }
     }, opts.retries || DEFAULT_RETRIES, requestId)
 
-    if (!result.data || result.data.length === 0 || !result.data[0].b64_json) {
+    if (!result.data || result.data.length === 0) {
       throw new Error('No image data returned from OpenAI')
     }
 
-    const base64Data = result.data[0].b64_json
-    const imageBuffer = Buffer.from(base64Data, 'base64')
+    const imageData = result.data[0]
+    let imageBuffer: Buffer
+    
+    // Handle both URL and base64 responses
+    if (imageData.url) {
+      // Download the image from the URL
+      const response = await fetch(imageData.url)
+      if (!response.ok) {
+        throw new Error(`Failed to download image from OpenAI: ${response.statusText}`)
+      }
+      const arrayBuffer = await response.arrayBuffer()
+      imageBuffer = Buffer.from(arrayBuffer)
+    } else if (imageData.b64_json) {
+      // Handle base64 response
+      imageBuffer = Buffer.from(imageData.b64_json, 'base64')
+    } else {
+      throw new Error('No image URL or base64 data in OpenAI response')
+    }
 
     // Note: OpenAI Images API doesn't return masks directly, but the edited image should have transparent background
     // If mask is needed, it would need to be generated separately or extracted from the image
