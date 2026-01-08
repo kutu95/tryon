@@ -218,6 +218,20 @@ export default function BoardDetailPage() {
     try {
       const response = await fetch(`/api/look-boards/${params.id}/items`)
       const data = await response.json()
+      
+      if (!response.ok) {
+        console.error('Error fetching items:', data.error || 'Unknown error')
+        setItems([])
+        return
+      }
+      
+      // Ensure data is an array
+      if (!Array.isArray(data)) {
+        console.error('Error fetching items: Expected array, got:', typeof data)
+        setItems([])
+        return
+      }
+      
       setItems(data)
       
       // Get signed URLs for all try-on results
@@ -234,6 +248,7 @@ export default function BoardDetailPage() {
       setSignedUrls(urls)
     } catch (error) {
       console.error('Error fetching items:', error)
+      setItems([])
     }
   }
 
