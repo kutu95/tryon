@@ -526,14 +526,15 @@ export default function GarmentDetailPage() {
                   </label>
                   <select
                     value={tuningOptions.size}
-                    onChange={(e) => setTuningOptions(prev => ({ ...prev, size: e.target.value as '1024x1024' | '1024x1536' | '1536x1024' }))}
+                    onChange={(e) => setTuningOptions(prev => ({ ...prev, size: e.target.value as '1024x1024' }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
                     disabled={tuning}
                   >
-                    <option value="1024x1024">1024x1024 (default)</option>
-                    <option value="1024x1536">1024x1536</option>
-                    <option value="1536x1024">1536x1024</option>
+                    <option value="1024x1024">1024x1024 (square - aspect ratio preserved)</option>
                   </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Note: OpenAI preserves the original aspect ratio even with square output size.
+                  </p>
                 </div>
                 <div className="text-sm text-gray-600">
                   <p className="font-medium mb-1">Note:</p>
