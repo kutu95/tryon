@@ -1,7 +1,7 @@
 'use client'
 
 import { PhotoQualityBadge } from '@/components/PhotoQualityBadge'
-import { PhotoAnalysisResult } from '@/lib/photoAnalysis/types'
+import type { PhotoAnalysisResult } from '@/lib/photoAnalysis/types'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
