@@ -113,12 +113,13 @@ export async function tuneActorPhoto(
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
       try {
-        // OpenAI SDK accepts File, Blob, or Buffer
-        // In Node.js, we can pass the Buffer directly or create a File-like object
-        // Note: The actual API structure may vary - adjust based on OpenAI SDK version
+        // OpenAI SDK expects File, Blob, or ArrayBuffer
+        // Convert Buffer to File for Node.js compatibility
+        const imageFile = new File([input], 'image.png', { type: 'image/png' })
+        
         const response = await client.images.edit({
           model: opts.model,
-          image: input, // Buffer should work, or we may need to convert to File
+          image: imageFile,
           prompt: prompt,
           n: 1,
           size: opts.size,
@@ -168,12 +169,13 @@ export async function tuneGarmentPhoto(
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
       try {
-        // OpenAI SDK accepts File, Blob, or Buffer
-        // In Node.js, we can pass the Buffer directly or create a File-like object
-        // Note: The actual API structure may vary - adjust based on OpenAI SDK version
+        // OpenAI SDK expects File, Blob, or ArrayBuffer
+        // Convert Buffer to File for Node.js compatibility
+        const imageFile = new File([input], 'image.png', { type: 'image/png' })
+        
         const response = await client.images.edit({
           model: opts.model,
-          image: input, // Buffer should work, or we may need to convert to File
+          image: imageFile,
           prompt: prompt,
           n: 1,
           size: opts.size,
@@ -227,12 +229,13 @@ export async function postprocessTryOnImage(
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
       try {
-        // OpenAI SDK accepts File, Blob, or Buffer
-        // In Node.js, we can pass the Buffer directly or create a File-like object
-        // Note: The actual API structure may vary - adjust based on OpenAI SDK version
+        // OpenAI SDK expects File, Blob, or ArrayBuffer
+        // Convert Buffer to File for Node.js compatibility
+        const imageFile = new File([input], 'image.png', { type: 'image/png' })
+        
         const response = await client.images.edit({
           model: opts.model,
-          image: input, // Buffer should work, or we may need to convert to File
+          image: imageFile,
           prompt: prompt,
           n: 1,
           size: opts.size,
