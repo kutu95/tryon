@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentProfile } from '@/lib/auth'
 import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
+import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 
 export async function DELETE(
   request: NextRequest,
