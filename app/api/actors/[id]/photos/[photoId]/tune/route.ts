@@ -51,28 +51,10 @@ export async function POST(
     // Process image to ensure RGBA format and under 4MB (in case it's an old upload)
     const imageBuffer = await processImageForUpload(originalBuffer)
     
-    // Calculate aspect ratio from processed image to match OpenAI size parameter
-    const imageMetadata = await sharp(imageBuffer).metadata()
-    const imageWidth = imageMetadata.width || 1024
-    const imageHeight = imageMetadata.height || 1024
-    const aspectRatio = imageWidth / imageHeight
-    
-    // Select size parameter that best matches the image aspect ratio
-    // OpenAI sizes: '1024x1024' (1:1), '1024x1536' (2:3 portrait), '1536x1024' (3:2 landscape)
-    let selectedSize: '1024x1024' | '1024x1536' | '1536x1024' = openaiOptions.size || '1024x1024'
-    if (aspectRatio > 1.2) {
-      // Landscape: use 3:2 ratio
-      selectedSize = '1536x1024'
-    } else if (aspectRatio < 0.8) {
-      // Portrait: use 2:3 ratio
-      selectedSize = '1024x1536'
-    } else {
-      // Square-ish: use 1:1 ratio
-      selectedSize = '1024x1024'
-    }
-    
-    // Override the size option with the calculated one
-    const finalOptions = { ...openaiOptions, size: selectedSize }
+    // OpenAI images.edit only supports square sizes: '256x256', '512x512', '1024x1024'
+    // Always use 1024x1024 for best quality
+    // The aspect ratio is preserved in the input image processing, and OpenAI will maintain it
+    const finalOptions = { ...openaiOptions, size: '1024x1024' as const }
     
     // Tune the photo with OpenAI
     let tunedBuffer: Buffer

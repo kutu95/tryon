@@ -53,7 +53,7 @@ export default function GarmentDetailPage() {
   const [tuningOptions, setTuningOptions] = useState({
     model: 'gpt-image-1-mini' as 'gpt-image-1-mini' | 'gpt-image-1',
     quality: 'medium' as 'low' | 'medium' | 'high',
-    size: '1024x1024' as '1024x1024' | '1024x1536' | '1536x1024',
+    size: '1024x1024' as '1024x1024',
   })
   const [tuning, setTuning] = useState(false)
 

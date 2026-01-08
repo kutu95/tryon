@@ -23,7 +23,7 @@ const getOpenAIClient = (): OpenAI | null => {
 export interface OpenAIImageOptions {
   model: 'gpt-image-1-mini' | 'gpt-image-1'
   quality: 'low' | 'medium' | 'high'
-  size: '1024x1024' | '1024x1536' | '1536x1024'
+  size: '256x256' | '512x512' | '1024x1024'
   requestId?: string
   timeoutMs?: number
   retries?: number

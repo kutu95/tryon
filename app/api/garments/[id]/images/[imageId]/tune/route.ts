@@ -50,10 +50,14 @@ export async function POST(
     // Process image to ensure RGBA format and under 4MB (in case it's an old upload)
     const imageBuffer = await processImageForUpload(originalBuffer)
     
+    // OpenAI images.edit only supports square sizes: '256x256', '512x512', '1024x1024'
+    // Always use 1024x1024 for best quality
+    const finalOptions = { ...openaiOptions, size: '1024x1024' as const }
+    
     // Tune the image with OpenAI
     let tunedResult: { image: Buffer; mask?: Buffer }
     try {
-      tunedResult = await tuneGarmentPhoto(imageBuffer, openaiOptions)
+      tunedResult = await tuneGarmentPhoto(imageBuffer, finalOptions)
     } catch (error: any) {
       console.error('[API] Error tuning garment image:', error)
       return NextResponse.json(
