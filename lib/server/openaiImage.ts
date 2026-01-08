@@ -123,12 +123,10 @@ export async function tuneActorPhoto(
         }) as any
         
         const response = await client.images.edit({
-          model: opts.model,
           image: imageFile,
           prompt: prompt,
           n: 1,
           size: opts.size,
-          response_format: 'b64_json',
         })
 
         clearTimeout(timeoutId)
@@ -139,12 +137,27 @@ export async function tuneActorPhoto(
       }
     }, opts.retries || DEFAULT_RETRIES, requestId)
 
-    if (!result.data || result.data.length === 0 || !result.data[0].b64_json) {
+    if (!result.data || result.data.length === 0) {
       throw new Error('No image data returned from OpenAI')
     }
 
-    const base64Data = result.data[0].b64_json
-    return Buffer.from(base64Data, 'base64')
+    const imageData = result.data[0]
+    
+    // Handle both URL and base64 responses
+    if (imageData.url) {
+      // Download the image from the URL
+      const response = await fetch(imageData.url)
+      if (!response.ok) {
+        throw new Error(`Failed to download image from OpenAI: ${response.statusText}`)
+      }
+      const arrayBuffer = await response.arrayBuffer()
+      return Buffer.from(arrayBuffer)
+    } else if (imageData.b64_json) {
+      // Handle base64 response
+      return Buffer.from(imageData.b64_json, 'base64')
+    } else {
+      throw new Error('No image URL or base64 data in OpenAI response')
+    }
   } catch (error: any) {
     console.error(`[OpenAI] Error tuning actor photo (${requestId}):`, error.message)
     throw new Error(`Failed to tune actor photo: ${error.message}`)
@@ -184,12 +197,10 @@ export async function tuneGarmentPhoto(
         }) as any
         
         const response = await client.images.edit({
-          model: opts.model,
           image: imageFile,
           prompt: prompt,
           n: 1,
           size: opts.size,
-          response_format: 'b64_json',
         })
 
         clearTimeout(timeoutId)
@@ -249,12 +260,10 @@ export async function postprocessTryOnImage(
         }) as any
         
         const response = await client.images.edit({
-          model: opts.model,
           image: imageFile,
           prompt: prompt,
           n: 1,
           size: opts.size,
-          response_format: 'b64_json',
         })
 
         clearTimeout(timeoutId)
@@ -265,12 +274,27 @@ export async function postprocessTryOnImage(
       }
     }, opts.retries || DEFAULT_RETRIES, requestId)
 
-    if (!result.data || result.data.length === 0 || !result.data[0].b64_json) {
+    if (!result.data || result.data.length === 0) {
       throw new Error('No image data returned from OpenAI')
     }
 
-    const base64Data = result.data[0].b64_json
-    return Buffer.from(base64Data, 'base64')
+    const imageData = result.data[0]
+    
+    // Handle both URL and base64 responses
+    if (imageData.url) {
+      // Download the image from the URL
+      const response = await fetch(imageData.url)
+      if (!response.ok) {
+        throw new Error(`Failed to download image from OpenAI: ${response.statusText}`)
+      }
+      const arrayBuffer = await response.arrayBuffer()
+      return Buffer.from(arrayBuffer)
+    } else if (imageData.b64_json) {
+      // Handle base64 response
+      return Buffer.from(imageData.b64_json, 'base64')
+    } else {
+      throw new Error('No image URL or base64 data in OpenAI response')
+    }
   } catch (error: any) {
     console.error(`[OpenAI] Error postprocessing try-on image (${requestId}):`, error.message)
     throw new Error(`Failed to postprocess try-on image: ${error.message}`)
