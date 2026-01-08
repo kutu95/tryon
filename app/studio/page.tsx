@@ -628,6 +628,21 @@ export default function StudioPage() {
       return
     }
 
+    // Get selected garment image to check its image_type
+    const selectedGarmentImage = garmentImages.find(img => img.id === selectedGarmentImageId)
+    
+    // Determine garment_photo_type: use from settings if not 'auto', otherwise derive from image_type
+    let garmentPhotoType = advancedSettings.garment_photo_type || 'auto'
+    if (garmentPhotoType === 'auto' && selectedGarmentImage?.image_type) {
+      garmentPhotoType = mapImageTypeToGarmentPhotoType(selectedGarmentImage.image_type)
+    }
+    
+    // Build settings with derived garment_photo_type
+    const settingsWithDerivedType = {
+      ...advancedSettings,
+      garment_photo_type: garmentPhotoType,
+    }
+
     setLoading(true)
     setError(null)
 
@@ -638,7 +653,7 @@ export default function StudioPage() {
         body: JSON.stringify({
           actor_photo_id: selectedActorPhotoId,
           garment_image_id: selectedGarmentImageId,
-          settings: advancedSettings,
+          settings: settingsWithDerivedType,
         }),
       })
       
