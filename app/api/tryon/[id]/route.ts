@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
 import { getTryOnProvider } from '@/src/server/tryon/providers'
 import { getSignedUrl, uploadFile, downloadFile } from '@/lib/storage'
-import { postprocessTryOnImage, type OpenAIImageOptions } from '@/lib/server/openaiImage'
 
 export async function GET(
   request: NextRequest,
@@ -45,30 +44,7 @@ export async function GET(
           
           const blob = await response.blob()
           const arrayBuffer = await blob.arrayBuffer()
-          let buffer: Buffer = Buffer.from(arrayBuffer)
-          
-          // Apply OpenAI postprocess if enabled in job settings
-          const settings = job.settings as any
-          if (settings?.openaiPostprocess) {
-            try {
-              console.log('[Try-on Status] Applying OpenAI postprocess...')
-              const postprocessOptions: OpenAIImageOptions = {
-                model: settings.openaiPostprocess.model || 'gpt-image-1-mini',
-                quality: settings.openaiPostprocess.quality || 'medium',
-                size: settings.openaiPostprocess.size || '1024x1024',
-                requestId: `postprocess-${job.id}-${Date.now()}`,
-                timeoutMs: 90000,
-                retries: 2,
-                maskExpandPx: settings.openaiPostprocess.maskExpandPx,
-              }
-              const postprocessedBuffer = await postprocessTryOnImage(buffer, postprocessOptions)
-              buffer = Buffer.from(postprocessedBuffer) as Buffer
-              console.log('[Try-on Status] OpenAI postprocess completed')
-            } catch (error: any) {
-              console.error('[Try-on Status] OpenAI postprocess failed, using raw FASHN result:', error.message)
-              // Continue with raw FASHN result if postprocess fails
-            }
-          }
+          const buffer: Buffer = Buffer.from(arrayBuffer)
           
           const resultPath = `results/${job.id}.jpg`
           

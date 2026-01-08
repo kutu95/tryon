@@ -44,15 +44,6 @@ export default function ActorDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editNotes, setEditNotes] = useState('')
-  const [tuningPhotoId, setTuningPhotoId] = useState<string | null>(null)
-  const [tuningOptions, setTuningOptions] = useState({
-    model: 'gpt-image-1-mini' as 'gpt-image-1-mini' | 'gpt-image-1',
-    quality: 'medium' as 'low' | 'medium' | 'high',
-    size: '1024x1024' as '1024x1024',
-    neutralBackground: true,
-    lightTouch: true,
-  })
-  const [tuning, setTuning] = useState(false)
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -251,43 +242,6 @@ export default function ActorDetailPage() {
     }
   }
 
-  const handleTunePhoto = async () => {
-    if (!tuningPhotoId) return
-
-    setTuning(true)
-    try {
-      const response = await fetch(`/api/actors/${params.id}/photos/${tuningPhotoId}/tune`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: tuningOptions.model,
-          quality: tuningOptions.quality,
-          size: tuningOptions.size,
-        }),
-      })
-
-      if (response.ok) {
-        const newPhoto = await response.json()
-        setTuningPhotoId(null)
-        fetchPhotos()
-        // Fetch signed URL for new photo
-        const urlResponse = await fetch(`/api/storage/signed-url?bucket=actors&path=${encodeURIComponent(newPhoto.storage_path)}`)
-        if (urlResponse.ok) {
-          const { url } = await urlResponse.json()
-          setSignedUrls(prev => ({ ...prev, [newPhoto.id]: url }))
-        }
-        alert('Photo tuned successfully!')
-      } else {
-        const error = await response.json()
-        alert(`Error: ${error.error || 'Failed to tune photo'}`)
-      }
-    } catch (error: any) {
-      console.error('Error tuning photo:', error)
-      alert(`Failed to tune photo: ${error.message || 'Unknown error'}`)
-    } finally {
-      setTuning(false)
-    }
-  }
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>
@@ -393,11 +347,6 @@ export default function ActorDetailPage() {
                   Primary
                 </span>
               )}
-              {photo.metadata?.source === 'openai' && (
-                <span className="bg-green-600 text-white text-xs px-2 py-1 rounded">
-                  Tuned
-                </span>
-              )}
             </div>
             <div className="absolute bottom-2 left-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <div className="flex gap-2">
@@ -410,13 +359,6 @@ export default function ActorDetailPage() {
                     Set Primary
                   </button>
                 )}
-                <button
-                  onClick={() => setTuningPhotoId(photo.id)}
-                  className="flex-1 bg-purple-600 text-white text-xs px-2 py-1 rounded hover:bg-purple-700"
-                  title="Tune with OpenAI"
-                >
-                  Tune
-                </button>
                 <button
                   onClick={() => handleDeletePhoto(photo.id)}
                   className="flex-1 bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700"
@@ -458,96 +400,6 @@ export default function ActorDetailPage() {
         </div>
       )}
 
-      {/* Tune Photo Modal */}
-      {tuningPhotoId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-semibold mb-4">Tune Photo with OpenAI</h2>
-            
-            {tuning ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
-                    <p className="text-gray-700 font-medium">Processing image with OpenAI...</p>
-                    <p className="text-sm text-gray-500 mt-2">This may take 30-60 seconds</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    OpenAI Image Model
-                  </label>
-                  <select
-                    value={tuningOptions.model}
-                    onChange={(e) => setTuningOptions(prev => ({ ...prev, model: e.target.value as 'gpt-image-1-mini' | 'gpt-image-1' }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
-                    disabled={tuning}
-                  >
-                    <option value="gpt-image-1-mini">gpt-image-1-mini (default)</option>
-                    <option value="gpt-image-1">gpt-image-1</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quality
-                  </label>
-                  <select
-                    value={tuningOptions.quality}
-                    onChange={(e) => setTuningOptions(prev => ({ ...prev, quality: e.target.value as 'low' | 'medium' | 'high' }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
-                    disabled={tuning}
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium (default)</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Output Size
-                  </label>
-                  <select
-                    value={tuningOptions.size}
-                    onChange={(e) => setTuningOptions(prev => ({ ...prev, size: e.target.value as '1024x1024' }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
-                    disabled={tuning}
-                  >
-                    <option value="1024x1024">1024x1024 (square - aspect ratio preserved)</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Note: OpenAI preserves the original aspect ratio even with square output size.
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => {
-                  if (!tuning) {
-                    setTuningPhotoId(null)
-                  }
-                }}
-                disabled={tuning}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {tuning ? 'Processing...' : 'Cancel'}
-              </button>
-              {!tuning && (
-                <button
-                  onClick={handleTunePhoto}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-                >
-                  Tune Photo
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

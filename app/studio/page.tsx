@@ -90,15 +90,6 @@ export default function StudioPage() {
   })
   const [lockSeed, setLockSeed] = useState(false)
   
-  // OpenAI postprocess state
-  const [showOpenAI, setShowOpenAI] = useState(false)
-  const [openAIPostprocess, setOpenAIPostprocess] = useState({
-    enabled: false,
-    model: 'gpt-image-1-mini' as 'gpt-image-1-mini' | 'gpt-image-1',
-    quality: 'medium' as 'low' | 'medium' | 'high',
-    size: '1024x1024' as '1024x1024' | '1024x1536' | '1536x1024',
-    maskExpandPx: 24,
-  })
   
   // UI state
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
@@ -299,12 +290,6 @@ export default function StudioPage() {
           actor_photo_id: selectedActorPhotoId,
           garment_image_id: selectedGarmentImageId,
           ...previewParams,
-          openaiPostprocess: openAIPostprocess.enabled ? {
-            model: openAIPostprocess.model,
-            quality: openAIPostprocess.quality,
-            size: openAIPostprocess.size,
-            maskExpandPx: openAIPostprocess.maskExpandPx,
-          } : undefined,
         }),
       })
 
@@ -468,12 +453,6 @@ export default function StudioPage() {
           actor_photo_id: selectedActorPhotoId,
           garment_image_id: selectedGarmentImageId,
           ...finalizeParams,
-          openaiPostprocess: openAIPostprocess.enabled ? {
-            model: openAIPostprocess.model,
-            quality: openAIPostprocess.quality,
-            size: openAIPostprocess.size,
-            maskExpandPx: openAIPostprocess.maskExpandPx,
-          } : undefined,
         }),
       })
 
@@ -966,102 +945,6 @@ export default function StudioPage() {
         )}
       </div>
 
-      {/* OpenAI Postprocess (Collapsed by default) */}
-      <div className="mb-6 border border-gray-200 rounded-lg">
-        <button
-          onClick={() => setShowOpenAI(!showOpenAI)}
-          className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50"
-        >
-          <span className="font-medium text-gray-900">Advanced (OpenAI Postprocess)</span>
-          <svg
-            className={`w-5 h-5 transform transition-transform ${showOpenAI ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        {showOpenAI && (
-          <div className="p-4 border-t border-gray-200 space-y-4">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="openai-postprocess"
-                checked={openAIPostprocess.enabled}
-                onChange={(e) => setOpenAIPostprocess(prev => ({ ...prev, enabled: e.target.checked }))}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <label htmlFor="openai-postprocess" className="ml-2 text-sm text-gray-700">
-                Use OpenAI postprocess (artifact fixing only)
-              </label>
-            </div>
-
-            {openAIPostprocess.enabled && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-gray-200">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    OpenAI Image Model
-                  </label>
-                  <select
-                    value={openAIPostprocess.model}
-                    onChange={(e) => setOpenAIPostprocess(prev => ({ ...prev, model: e.target.value as 'gpt-image-1-mini' | 'gpt-image-1' }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
-                  >
-                    <option value="gpt-image-1-mini">gpt-image-1-mini (default)</option>
-                    <option value="gpt-image-1">gpt-image-1</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quality
-                  </label>
-                  <select
-                    value={openAIPostprocess.quality}
-                    onChange={(e) => setOpenAIPostprocess(prev => ({ ...prev, quality: e.target.value as 'low' | 'medium' | 'high' }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium (default)</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Output Size
-                  </label>
-                  <select
-                    value={openAIPostprocess.size}
-                    onChange={(e) => setOpenAIPostprocess(prev => ({ ...prev, size: e.target.value as '1024x1024' | '1024x1536' | '1536x1024' }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
-                  >
-                    <option value="1024x1024">1024x1024 (default)</option>
-                    <option value="1024x1536">1024x1536</option>
-                    <option value="1536x1024">1536x1024</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Max Postprocess Mask Expansion (px)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={openAIPostprocess.maskExpandPx}
-                    onChange={(e) => setOpenAIPostprocess(prev => ({ ...prev, maskExpandPx: parseInt(e.target.value) || 24 }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* Action Buttons */}
       <div className="mb-6 flex flex-wrap gap-3">

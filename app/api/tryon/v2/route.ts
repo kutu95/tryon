@@ -5,7 +5,6 @@ import { runTryOn, type TryOnError } from '@/lib/fashn'
 import { uploadFile } from '@/lib/storage'
 import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 import { type TryOnRequest } from '@/lib/fashn/types'
-import { postprocessTryOnImage, type OpenAIImageOptions } from '@/lib/server/openaiImage'
 
 export const runtime = 'nodejs' // Ensure Node.js runtime
 
@@ -98,7 +97,6 @@ export async function POST(request: NextRequest) {
     // Handle async jobs (need to poll for results)
     if (result.isAsync && result.jobId && body.actor_photo_id && body.garment_image_id) {
         // Create a tryon_job record with status 'running' for async polling
-      const openaiPostprocess = body.openaiPostprocess as OpenAIImageOptions | undefined
       const { data: job, error: jobError } = await supabase
         .from('tryon_jobs')
         .insert({
@@ -110,7 +108,6 @@ export async function POST(request: NextRequest) {
           settings: {
             ...tryOnRequest,
             seed: tryOnRequest.seed,
-            openaiPostprocess: openaiPostprocess,
           },
           created_by: user.id,
         })
@@ -152,7 +149,6 @@ export async function POST(request: NextRequest) {
     // Create try-on job records for each result (if using old format)
     if (body.actor_photo_id && body.garment_image_id) {
       const jobs: Array<{ id: string; [key: string]: any }> = []
-      const openaiPostprocess = body.openaiPostprocess as OpenAIImageOptions | undefined
       
       for (const tryOnResult of result.results) {
         let resultStoragePath: string | null = null
@@ -177,28 +173,7 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        // Apply OpenAI postprocess if enabled
-        if (openaiPostprocess && finalImageBuffer) {
-          try {
-            console.log('[API/tryon/v2] Applying OpenAI postprocess...')
-            const postprocessOptions: OpenAIImageOptions = {
-              model: openaiPostprocess.model || 'gpt-image-1-mini',
-              quality: openaiPostprocess.quality || 'medium',
-              size: openaiPostprocess.size || '1024x1024',
-              requestId: `postprocess-${Date.now()}`,
-              timeoutMs: 90000,
-              retries: 2,
-              maskExpandPx: openaiPostprocess.maskExpandPx,
-            }
-            finalImageBuffer = await postprocessTryOnImage(finalImageBuffer, postprocessOptions)
-            console.log('[API/tryon/v2] OpenAI postprocess completed')
-          } catch (error: any) {
-            console.error('[API/tryon/v2] OpenAI postprocess failed, using raw FASHN result:', error.message)
-            // Continue with raw FASHN result if postprocess fails
-          }
-        }
-        
-        // Store final result (postprocessed or raw)
+        // Store result
         if (finalImageBuffer) {
           try {
             const resultPath = `results/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${tryOnRequest.output_format}`
