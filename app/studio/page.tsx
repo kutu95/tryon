@@ -94,6 +94,7 @@ export default function StudioPage() {
   const [selectedActorPhotoId, setSelectedActorPhotoId] = useState<string>('')
   const [selectedGarmentId, setSelectedGarmentId] = useState<string>('')
   const [selectedGarmentImageId, setSelectedGarmentImageId] = useState<string>('')
+  const [showRecommendedOnly, setShowRecommendedOnly] = useState(false)
   
   // Two-phase workflow state
   const [session, setSession] = useState<TryOnSession | null>(null)
