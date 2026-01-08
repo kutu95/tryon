@@ -12,9 +12,6 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'Costume Stylist',
   },
-  other: {
-    'mobile-web-app-capable': 'yes',
-  },
   icons: {
     icon: [
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
@@ -43,9 +40,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <meta name="mobile-web-app-capable" content="yes" />
-      </head>
       <body>
         <PWAScript />
         <Navigation />
