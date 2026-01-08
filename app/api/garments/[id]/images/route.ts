@@ -19,11 +19,16 @@ export async function GET(
       .eq('garment_id', params.id)
       .order('created_at', { ascending: false })
     
-    if (error) throw error
+    if (error) {
+      console.error('[API] Error fetching garment images:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
     
-    return NextResponse.json(data)
+    // Always return an array, even if empty
+    return NextResponse.json(data || [])
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[API] Error in GET /api/garments/[id]/images:', error)
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
   }
 }
 

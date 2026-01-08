@@ -160,6 +160,20 @@ export default function GarmentDetailPage() {
     try {
       const response = await fetch(`/api/garments/${params.id}/images`)
       const data = await response.json()
+      
+      if (!response.ok) {
+        console.error('Error fetching images:', data.error || 'Unknown error')
+        setImages([])
+        return
+      }
+      
+      // Ensure data is an array
+      if (!Array.isArray(data)) {
+        console.error('Error fetching images: Expected array, got:', typeof data)
+        setImages([])
+        return
+      }
+      
       setImages(data)
       
       // Get signed URLs for all images
@@ -174,6 +188,7 @@ export default function GarmentDetailPage() {
       setSignedUrls(urls)
     } catch (error) {
       console.error('Error fetching images:', error)
+      setImages([])
     }
   }
 
