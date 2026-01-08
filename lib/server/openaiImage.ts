@@ -129,16 +129,13 @@ export async function tuneActorPhoto(
           lastModified: Date.now()
         }) as any
         
-        // Use 'auto' size for gpt-image-1 to preserve aspect ratio, or square size for other models
-        const sizeParam = opts.size === 'auto' || (opts.model === 'gpt-image-1' && !opts.size) 
-          ? 'auto' 
-          : (opts.size || '1024x1024')
-        
+        // images.edit only supports square sizes: '256x256', '512x512', '1024x1024'
+        // Use 1024x1024 for best quality
         const response = await client.images.edit({
           image: imageFile,
           prompt: prompt,
           n: 1,
-          size: sizeParam as any, // 'auto' is valid for gpt-image-1 model
+          size: opts.size || '1024x1024',
         })
 
         clearTimeout(timeoutId)
@@ -211,16 +208,13 @@ export async function tuneGarmentPhoto(
           lastModified: Date.now()
         }) as any
         
-        // Use 'auto' size for gpt-image-1 to preserve aspect ratio, or square size for other models
-        const sizeParam = opts.size === 'auto' || (opts.model === 'gpt-image-1' && !opts.size) 
-          ? 'auto' 
-          : (opts.size || '1024x1024')
-        
+        // images.edit only supports square sizes: '256x256', '512x512', '1024x1024'
+        // Use 1024x1024 for best quality
         const response = await client.images.edit({
           image: imageFile,
           prompt: prompt,
           n: 1,
-          size: sizeParam as any, // 'auto' is valid for gpt-image-1 model
+          size: opts.size || '1024x1024',
         })
 
         clearTimeout(timeoutId)
@@ -282,16 +276,13 @@ export async function postprocessTryOnImage(
           lastModified: Date.now()
         }) as any
         
-        // Use 'auto' size for gpt-image-1 to preserve aspect ratio, or square size for other models
-        const sizeParam = opts.size === 'auto' || (opts.model === 'gpt-image-1' && !opts.size) 
-          ? 'auto' 
-          : (opts.size || '1024x1024')
-        
+        // images.edit only supports square sizes: '256x256', '512x512', '1024x1024'
+        // Use 1024x1024 for best quality
         const response = await client.images.edit({
           image: imageFile,
           prompt: prompt,
           n: 1,
-          size: sizeParam as any, // 'auto' is valid for gpt-image-1 model
+          size: opts.size || '1024x1024',
         })
 
         clearTimeout(timeoutId)

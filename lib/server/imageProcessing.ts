@@ -143,3 +143,75 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
   
   return output
 }
+
+/**
+ * Pad image to square while preserving aspect ratio
+ * Adds transparent padding to make the image square
+ */
+export async function padImageToSquare(input: Buffer, aspectRatio: number): Promise<Buffer> {
+  const metadata = await sharp(input).metadata()
+  const width = metadata.width || 1024
+  const height = metadata.height || 1024
+  
+  // Calculate target square size (use the larger dimension)
+  const squareSize = Math.max(width, height)
+  
+  // Calculate padding needed
+  const padLeft = Math.floor((squareSize - width) / 2)
+  const padTop = Math.floor((squareSize - height) / 2)
+  const padRight = squareSize - width - padLeft
+  const padBottom = squareSize - height - padTop
+  
+  // Pad image to square with transparent background
+  const padded = await sharp(input)
+    .extend({
+      top: padTop,
+      bottom: padBottom,
+      left: padLeft,
+      right: padRight,
+      background: { r: 0, g: 0, b: 0, alpha: 0 } // Transparent padding
+    })
+    .png()
+    .toBuffer()
+  
+  return padded
+}
+
+/**
+ * Crop image back to original aspect ratio after OpenAI processing
+ * Removes padding that was added to make it square
+ */
+export async function cropToAspectRatio(input: Buffer, targetAspectRatio: number): Promise<Buffer> {
+  const metadata = await sharp(input).metadata()
+  const width = metadata.width || 1024
+  const height = metadata.height || 1024
+  const currentAspectRatio = width / height
+  
+  if (Math.abs(currentAspectRatio - targetAspectRatio) < 0.01) {
+    // Already at correct aspect ratio
+    return input
+  }
+  
+  let cropWidth = width
+  let cropHeight = height
+  let left = 0
+  let top = 0
+  
+  if (currentAspectRatio > targetAspectRatio) {
+    // Current is wider - crop width
+    cropWidth = Math.floor(height * targetAspectRatio)
+    left = Math.floor((width - cropWidth) / 2)
+  } else {
+    // Current is taller - crop height
+    cropHeight = Math.floor(width / targetAspectRatio)
+    top = Math.floor((height - cropHeight) / 2)
+  }
+  
+  // Crop to target aspect ratio
+  const cropped = await sharp(input)
+    .extract({ left, top, width: cropWidth, height: cropHeight })
+    .png()
+    .toBuffer()
+  
+  return cropped
+}

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
 import { downloadFile, uploadFile } from '@/lib/storage'
 import { tuneActorPhoto, type OpenAIImageOptions } from '@/lib/server/openaiImage'
-import { processImageForUpload } from '@/lib/server/imageProcessing'
+import { processImageForUpload, padImageToSquare, cropToAspectRatio } from '@/lib/server/imageProcessing'
 import sharp from 'sharp'
 import { randomUUID } from 'crypto'
 
@@ -49,19 +49,31 @@ export async function POST(
     const originalBuffer = Buffer.from(await originalImage.arrayBuffer())
     
     // Process image to ensure RGBA format and under 4MB (in case it's an old upload)
+    // This preserves aspect ratio in the input
     const imageBuffer = await processImageForUpload(originalBuffer)
     
-    // Use 'auto' size for gpt-image-1 model to preserve aspect ratio
-    // For gpt-image-1-mini, fall back to square size
+    // Get original dimensions for aspect ratio preservation
+    const imageMetadata = await sharp(originalBuffer).metadata()
+    const originalWidth = imageMetadata.width || 1024
+    const originalHeight = imageMetadata.height || 1024
+    const originalAspectRatio = originalWidth / originalHeight
+    
+    // Pad image to square before sending to OpenAI (they require square input)
+    const paddedBuffer = await padImageToSquare(imageBuffer, originalAspectRatio)
+    
+    // Use square size (required by OpenAI)
     const finalOptions = {
       ...openaiOptions,
-      size: openaiOptions.model === 'gpt-image-1' ? 'auto' as const : '1024x1024' as const
+      size: '1024x1024' as const
     }
     
-    // Tune the photo with OpenAI
+    // Tune the photo with OpenAI (sends padded square image)
     let tunedBuffer: Buffer
     try {
-      tunedBuffer = await tuneActorPhoto(imageBuffer, finalOptions)
+      tunedBuffer = await tuneActorPhoto(paddedBuffer, finalOptions)
+      
+      // Crop back to original aspect ratio
+      tunedBuffer = await cropToAspectRatio(tunedBuffer, originalAspectRatio)
     } catch (error: any) {
       console.error('[API] Error tuning actor photo:', error)
       return NextResponse.json(
