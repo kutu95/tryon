@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Navigation } from "@/components/Navigation";
 import { PWAScript } from "@/components/PWAScript";
@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   title: "Costume Stylist Virtual Try-On",
   description: "2D virtual try-on for costume styling",
   manifest: '/manifest.json',
-  themeColor: '#4f46e5',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -28,6 +27,10 @@ export const metadata: Metadata = {
       { rel: 'android-chrome-512x512', url: '/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' },
     ],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#4f46e5',
 };
 
 export default function RootLayout({
