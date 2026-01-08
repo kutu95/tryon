@@ -31,24 +31,20 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
   // Convert to PNG with RGBA format (required by OpenAI)
   // Force RGBA by ensuring alpha channel and using raw RGBA conversion
   // First ensure we have RGBA channels, then encode as PNG
-  let output = await processed
+  const rgbaBuffer = await processed
     .ensureAlpha() // Add alpha channel if missing
     .raw() // Convert to raw RGBA buffer first
     .toBuffer({ resolveWithObject: true })
   
-  // Now encode as PNG with explicit RGBA format
-  const { data, info } = output
-  output = await sharp(data, {
+  // Now encode as PNG with explicit RGBA format (4 channels)
+  let output = await sharp(rgbaBuffer.data, {
     raw: {
-      width: info.width,
-      height: info.height,
-      channels: 4 // Explicitly RGBA
+      width: rgbaBuffer.info.width,
+      height: rgbaBuffer.info.height,
+      channels: 4 // Explicitly RGBA (4 channels)
     }
   })
-    .toFormat('png', { 
-      compressionLevel: 9,
-      palette: false // Force truecolor RGBA
-    })
+    .png({ compressionLevel: 9 })
     .toBuffer()
   
   // If still too large, reduce dimensions (PNG doesn't have quality setting, only compression level)
