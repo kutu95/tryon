@@ -51,10 +51,9 @@ export async function POST(
     // Process image to ensure RGBA format and under 4MB (in case it's an old upload)
     const imageBuffer = await processImageForUpload(originalBuffer)
     
-    // OpenAI images.edit only supports square sizes: '256x256', '512x512', '1024x1024'
-    // Always use 1024x1024 for best quality
-    // The aspect ratio is preserved in the input image processing, and OpenAI will maintain it
-    const finalOptions = { ...openaiOptions, size: '1024x1024' as const }
+    // Don't specify size - let OpenAI preserve original aspect ratio
+    // Remove size from options so aspect ratio is maintained
+    const { size, ...finalOptions } = openaiOptions
     
     // Tune the photo with OpenAI
     let tunedBuffer: Buffer
