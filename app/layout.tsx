@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Navigation } from "@/components/Navigation";
+import { PWAScript } from "@/components/PWAScript";
 
 export const metadata: Metadata = {
   title: "Costume Stylist Virtual Try-On",
@@ -42,25 +43,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Costume Stylist" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('ServiceWorker registration successful');
-                    })
-                    .catch(function(err) {
-                      console.log('ServiceWorker registration failed: ', err);
-                    });
-                });
-              }
-            `,
-          }}
-        />
       </head>
       <body>
+        <PWAScript />
         <Navigation />
         <main className="container mx-auto px-4 py-8 bg-white min-h-screen">{children}</main>
       </body>
