@@ -107,7 +107,7 @@ export function Navigation() {
     { href: '/studio', label: 'Studio' },
     { href: '/actors', label: 'Actors' },
     { href: '/garments', label: 'Garments' },
-    { href: '/accessories', label: 'Accessories' },
+    // { href: '/accessories', label: 'Accessories' }, // Hidden - not in use
     { href: '/boards', label: 'Look Boards' },
     { href: '/help', label: 'Help' },
   ]
