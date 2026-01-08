@@ -1,7 +1,6 @@
 // Service Worker for Costume Stylist Virtual Try-On
-const CACHE_NAME = 'costume-stylist-v1'
+const CACHE_NAME = 'costume-stylist-v2'
 const urlsToCache = [
-  '/',
   '/studio',
   '/actors',
   '/garments',
@@ -57,13 +56,27 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // Skip caching for root path since it redirects
+  const url = new URL(event.request.url)
+  if (url.pathname === '/' || url.pathname === '/login') {
+    // For redirecting pages, always fetch from network with redirect: 'follow'
+    event.respondWith(
+      fetch(event.request, { redirect: 'follow' })
+        .catch(() => {
+          // If network fails, try cache as fallback
+          return caches.match(event.request)
+        })
+    )
+    return
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
         // Return cached version or fetch from network
-        return response || fetch(event.request).then((response) => {
-          // Don't cache non-successful responses
-          if (!response || response.status !== 200 || response.type !== 'basic') {
+        return response || fetch(event.request, { redirect: 'follow' }).then((response) => {
+          // Don't cache non-successful responses or redirects
+          if (!response || response.status !== 200 || response.type !== 'basic' || response.redirected) {
             return response
           }
 
@@ -81,7 +94,7 @@ self.addEventListener('fetch', (event) => {
       .catch(() => {
         // If both cache and network fail, return offline page if available
         if (event.request.destination === 'document') {
-          return caches.match('/')
+          return caches.match('/studio')
         }
       })
   )
