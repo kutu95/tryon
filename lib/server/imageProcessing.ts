@@ -29,11 +29,25 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
   }
   
   // Convert to PNG with RGBA format (required by OpenAI)
-  // Ensure alpha channel is present
+  // Explicitly use toFormat to ensure RGBA with alpha channel
   let output = await processed
     .ensureAlpha() // Add alpha channel if missing
-    .png({ quality: 90, compressionLevel: 9 })
+    .toFormat('png', { 
+      quality: 90,
+      compressionLevel: 9,
+      palette: false // Force truecolor RGBA, not indexed color
+    })
     .toBuffer()
+  
+  // Verify the image has 4 channels (RGBA)
+  const outputMetadata = await sharp(output).metadata()
+  if (outputMetadata.channels !== 4) {
+    // Force RGBA conversion if not already 4 channels
+    output = await sharp(output)
+      .ensureAlpha()
+      .toFormat('png', { quality: 90, compressionLevel: 9, palette: false })
+      .toBuffer()
+  }
   
   // If still too large, reduce quality progressively
   let quality = 90
@@ -41,9 +55,18 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
     quality -= 10
     output = await sharp(input)
       .resize(MAX_DIMENSION, MAX_DIMENSION, { fit: 'inside', withoutEnlargement: true })
-      .ensureAlpha() // Add alpha channel
-      .png({ quality, compressionLevel: 9 })
+      .ensureAlpha()
+      .toFormat('png', { quality, compressionLevel: 9, palette: false })
       .toBuffer()
+    
+    // Verify RGBA format
+    const checkMetadata = await sharp(output).metadata()
+    if (checkMetadata.channels !== 4) {
+      output = await sharp(output)
+        .ensureAlpha()
+        .toFormat('png', { quality, compressionLevel: 9, palette: false })
+        .toBuffer()
+    }
   }
   
   // If still too large, reduce dimensions
@@ -53,9 +76,18 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
     const newHeight = Math.floor((metadata.height || 1024) * scale)
     output = await sharp(input)
       .resize(newWidth, newHeight, { fit: 'inside', withoutEnlargement: true })
-      .ensureAlpha() // Add alpha channel
-      .png({ quality: 80, compressionLevel: 9 })
+      .ensureAlpha()
+      .toFormat('png', { quality: 80, compressionLevel: 9, palette: false })
       .toBuffer()
+    
+    // Verify RGBA format
+    const checkMetadata = await sharp(output).metadata()
+    if (checkMetadata.channels !== 4) {
+      output = await sharp(output)
+        .ensureAlpha()
+        .toFormat('png', { quality: 80, compressionLevel: 9, palette: false })
+        .toBuffer()
+    }
     scale -= 0.1
   }
   
