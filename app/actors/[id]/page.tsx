@@ -399,14 +399,6 @@ export default function ActorDetailPage() {
                 </span>
               )}
             </div>
-            {/* Always-visible Tune button */}
-            <button
-              onClick={() => setTuningPhotoId(photo.id)}
-              className="absolute top-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded hover:bg-purple-700 z-10 shadow-lg"
-              title="Tune with OpenAI"
-            >
-              Tune
-            </button>
             <div className="absolute bottom-2 left-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <div className="flex gap-2">
                 {!photo.is_primary && (
@@ -434,14 +426,6 @@ export default function ActorDetailPage() {
                 </button>
               </div>
             </div>
-            {/* Always-visible Tune button for better UX */}
-            <button
-              onClick={() => setTuningPhotoId(photo.id)}
-              className="absolute top-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded hover:bg-purple-700 z-10"
-              title="Tune with OpenAI"
-            >
-              Tune
-            </button>
           </div>
         ))}
       </div>
