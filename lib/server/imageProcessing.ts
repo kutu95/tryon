@@ -28,8 +28,12 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
     })
   }
   
-  // Convert to PNG and compress
-  let output = await processed.png({ quality: 90, compressionLevel: 9 }).toBuffer()
+  // Convert to PNG with RGBA format (required by OpenAI)
+  // Ensure alpha channel is present
+  let output = await processed
+    .ensureAlpha() // Add alpha channel if missing
+    .png({ quality: 90, compressionLevel: 9 })
+    .toBuffer()
   
   // If still too large, reduce quality progressively
   let quality = 90
@@ -37,6 +41,7 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
     quality -= 10
     output = await sharp(input)
       .resize(MAX_DIMENSION, MAX_DIMENSION, { fit: 'inside', withoutEnlargement: true })
+      .ensureAlpha() // Add alpha channel
       .png({ quality, compressionLevel: 9 })
       .toBuffer()
   }
@@ -48,6 +53,7 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
     const newHeight = Math.floor((metadata.height || 1024) * scale)
     output = await sharp(input)
       .resize(newWidth, newHeight, { fit: 'inside', withoutEnlargement: true })
+      .ensureAlpha() // Add alpha channel
       .png({ quality: 80, compressionLevel: 9 })
       .toBuffer()
     scale -= 0.1

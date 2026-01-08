@@ -478,68 +478,90 @@ export default function GarmentDetailPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-semibold mb-4">Tune Image with OpenAI</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  OpenAI Image Model
-                </label>
-                <select
-                  value={tuningOptions.model}
-                  onChange={(e) => setTuningOptions(prev => ({ ...prev, model: e.target.value as 'gpt-image-1-mini' | 'gpt-image-1' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
-                >
-                  <option value="gpt-image-1-mini">gpt-image-1-mini (default)</option>
-                  <option value="gpt-image-1">gpt-image-1</option>
-                </select>
+            
+            {tuning ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-center">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+                    <p className="text-gray-700 font-medium">Processing image with OpenAI...</p>
+                    <p className="text-sm text-gray-500 mt-2">This may take 30-60 seconds</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quality
-                </label>
-                <select
-                  value={tuningOptions.quality}
-                  onChange={(e) => setTuningOptions(prev => ({ ...prev, quality: e.target.value as 'low' | 'medium' | 'high' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium (default)</option>
-                  <option value="high">High</option>
-                </select>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    OpenAI Image Model
+                  </label>
+                  <select
+                    value={tuningOptions.model}
+                    onChange={(e) => setTuningOptions(prev => ({ ...prev, model: e.target.value as 'gpt-image-1-mini' | 'gpt-image-1' }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                    disabled={tuning}
+                  >
+                    <option value="gpt-image-1-mini">gpt-image-1-mini (default)</option>
+                    <option value="gpt-image-1">gpt-image-1</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quality
+                  </label>
+                  <select
+                    value={tuningOptions.quality}
+                    onChange={(e) => setTuningOptions(prev => ({ ...prev, quality: e.target.value as 'low' | 'medium' | 'high' }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                    disabled={tuning}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium (default)</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Output Size
+                  </label>
+                  <select
+                    value={tuningOptions.size}
+                    onChange={(e) => setTuningOptions(prev => ({ ...prev, size: e.target.value as '1024x1024' | '1024x1536' | '1536x1024' }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+                    disabled={tuning}
+                  >
+                    <option value="1024x1024">1024x1024 (default)</option>
+                    <option value="1024x1536">1024x1536</option>
+                    <option value="1536x1024">1536x1024</option>
+                  </select>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <p className="font-medium mb-1">Note:</p>
+                  <p>This will create a clean product cutout with transparent background. The original image will be preserved.</p>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Output Size
-                </label>
-                <select
-                  value={tuningOptions.size}
-                  onChange={(e) => setTuningOptions(prev => ({ ...prev, size: e.target.value as '1024x1024' | '1024x1536' | '1536x1024' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
-                >
-                  <option value="1024x1024">1024x1024 (default)</option>
-                  <option value="1024x1536">1024x1536</option>
-                  <option value="1536x1024">1536x1024</option>
-                </select>
-              </div>
-              <div className="text-sm text-gray-600">
-                <p className="font-medium mb-1">Note:</p>
-                <p>This will create a clean product cutout with transparent background. The original image will be preserved.</p>
-              </div>
-            </div>
+            )}
+            
             <div className="flex justify-end space-x-3 mt-6">
               <button
-                onClick={() => setTuningImageId(null)}
+                onClick={() => {
+                  if (!tuning) {
+                    setTuningImageId(null)
+                  }
+                }}
                 disabled={tuning}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancel
+                {tuning ? 'Processing...' : 'Cancel'}
               </button>
-              <button
-                onClick={handleTuneImage}
-                disabled={tuning}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
-              >
-                {tuning ? 'Tuning...' : 'Create Cutout'}
-              </button>
+              {!tuning && (
+                <button
+                  onClick={handleTuneImage}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  Create Cutout
+                </button>
+              )}
             </div>
           </div>
         </div>
