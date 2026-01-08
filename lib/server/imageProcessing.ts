@@ -6,7 +6,8 @@
 import sharp from 'sharp'
 
 const MAX_SIZE_BYTES = 4 * 1024 * 1024 // 4 MB
-const MAX_DIMENSION = 4096 // Max dimension
+const MAX_DIMENSION = 4096 // Max dimension for initial processing
+const TARGET_MAX_DIMENSION = 2048 // Target max dimension for OpenAI (smaller = smaller file size)
 
 /**
  * Process and normalize image: convert to PNG and ensure under 4MB
@@ -20,9 +21,16 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
   const currentWidth = metadata.width || 0
   const currentHeight = metadata.height || 0
   
-  // Resize if too large
-  if (currentWidth > MAX_DIMENSION || currentHeight > MAX_DIMENSION) {
-    processed = processed.resize(MAX_DIMENSION, MAX_DIMENSION, {
+  // Resize if too large - use smaller target dimension for better compression
+  const targetDimension = Math.min(MAX_DIMENSION, TARGET_MAX_DIMENSION)
+  if (currentWidth > targetDimension || currentHeight > targetDimension) {
+    processed = processed.resize(targetDimension, targetDimension, {
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+  } else if (currentWidth > TARGET_MAX_DIMENSION || currentHeight > TARGET_MAX_DIMENSION) {
+    // Even if under max, resize to target for better file size
+    processed = processed.resize(TARGET_MAX_DIMENSION, TARGET_MAX_DIMENSION, {
       fit: 'inside',
       withoutEnlargement: true,
     })
@@ -48,42 +56,17 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
     .png({ compressionLevel: 6, adaptiveFiltering: true })
     .toBuffer()
   
-  // If still too large, progressively reduce dimensions
-  let scale = 0.8
+  // If still too large, progressively reduce dimensions more aggressively
+  let targetSize = TARGET_MAX_DIMENSION
   let attempts = 0
-  const maxAttempts = 15
+  const maxAttempts = 20
   
-  while (output.length > MAX_SIZE_BYTES && scale > 0.2 && attempts < maxAttempts) {
+  while (output.length > MAX_SIZE_BYTES && targetSize >= 512 && attempts < maxAttempts) {
     attempts++
-    const newWidth = Math.floor((metadata.width || 1024) * scale)
-    const newHeight = Math.floor((metadata.height || 1024) * scale)
-    
-    // Ensure minimum dimensions
-    if (newWidth < 512 || newHeight < 512) {
-      // Last resort: use very small dimensions
-      const finalWidth = Math.min(1024, newWidth)
-      const finalHeight = Math.min(1024, newHeight)
-      
-      const finalRgba = await sharp(input)
-        .resize(finalWidth, finalHeight, { fit: 'inside', withoutEnlargement: true })
-        .ensureAlpha()
-        .raw()
-        .toBuffer({ resolveWithObject: true })
-      
-      output = await sharp(finalRgba.data, {
-        raw: {
-          width: finalRgba.info.width,
-          height: finalRgba.info.height,
-          channels: 4
-        }
-      })
-        .png({ compressionLevel: 6, adaptiveFiltering: true })
-        .toBuffer()
-      break
-    }
+    targetSize = Math.floor(targetSize * 0.85) // Reduce by 15% each time
     
     const resizedRgba = await sharp(input)
-      .resize(newWidth, newHeight, { fit: 'inside', withoutEnlargement: true })
+      .resize(targetSize, targetSize, { fit: 'inside', withoutEnlargement: true })
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true })
@@ -97,13 +80,25 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
     })
       .png({ compressionLevel: 6, adaptiveFiltering: true })
       .toBuffer()
+  }
+  
+  // Last resort: use even smaller dimensions if still too large
+  if (output.length > MAX_SIZE_BYTES) {
+    const finalRgba = await sharp(input)
+      .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
     
-    // Reduce scale more aggressively if still too large
-    if (output.length > MAX_SIZE_BYTES) {
-      scale -= 0.1 // Progressive reduction
-    } else {
-      break
-    }
+    output = await sharp(finalRgba.data, {
+      raw: {
+        width: finalRgba.info.width,
+        height: finalRgba.info.height,
+        channels: 4
+      }
+    })
+      .png({ compressionLevel: 6, adaptiveFiltering: true })
+      .toBuffer()
   }
   
   if (output.length > MAX_SIZE_BYTES) {
