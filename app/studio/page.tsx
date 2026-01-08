@@ -789,7 +789,17 @@ export default function StudioPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mode</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mode
+                  <span className="relative inline-block ml-1 group">
+                    <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                    <span className="absolute left-1/2 bottom-full mb-2 transform -translate-x-1/2 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                      Quality mode controls the trade-off between speed and output quality. Performance: fastest, lower quality. Balanced: good balance. Quality: slowest, highest quality.
+                    </span>
+                  </span>
+                </label>
                 <select
                   value={advancedSettings.mode || 'balanced'}
                   onChange={(e) => {
@@ -823,7 +833,17 @@ export default function StudioPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Moderation Level</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Moderation Level
+                  <span className="relative inline-block ml-1 group">
+                    <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                    <span className="absolute left-1/2 bottom-full mb-2 transform -translate-x-1/2 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                      Controls content moderation for try-on results. Permissive: allows most content. Conservative: stricter filtering. None: no moderation (use with caution).
+                    </span>
+                  </span>
+                </label>
                 <select
                   value={advancedSettings.moderation_level || 'permissive'}
                   onChange={(e) => {
@@ -886,8 +906,16 @@ export default function StudioPage() {
                   }}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
-                <label htmlFor="segmentation-free" className="ml-2 text-sm text-gray-700">
+                <label htmlFor="segmentation-free" className="ml-2 text-sm text-gray-700 flex items-center">
                   Segmentation Free
+                  <span className="relative inline-block ml-1 group">
+                    <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                    <span className="absolute left-1/2 bottom-full mb-2 transform -translate-x-1/2 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                      When enabled, uses advanced algorithms that don't require pre-segmentation of the garment. Works better with complex garments and overlapping items. Recommended for most cases.
+                    </span>
+                  </span>
                 </label>
               </div>
 
@@ -899,8 +927,16 @@ export default function StudioPage() {
                   onChange={(e) => setLockSeed(e.target.checked)}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
-                <label htmlFor="lock-seed" className="ml-2 text-sm text-gray-700">
+                <label htmlFor="lock-seed" className="ml-2 text-sm text-gray-700 flex items-center">
                   Lock Seed (for reproducibility)
+                  <span className="relative inline-block ml-1 group">
+                    <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                    <span className="absolute left-1/2 bottom-full mb-2 transform -translate-x-1/2 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                      When enabled, uses a fixed random seed for generation. This allows you to recreate the exact same result by using the same seed value. Useful for comparing variations or reproducing specific results.
+                    </span>
+                  </span>
                 </label>
               </div>
 
@@ -936,8 +972,16 @@ export default function StudioPage() {
                   }}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
-                <label htmlFor="return-base64" className="ml-2 text-sm text-gray-700">
+                <label htmlFor="return-base64" className="ml-2 text-sm text-gray-700 flex items-center">
                   Privacy Mode (Return Base64 - if supported)
+                  <span className="relative inline-block ml-1 group">
+                    <svg className="w-4 h-4 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                    <span className="absolute left-1/2 bottom-full mb-2 transform -translate-x-1/2 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                      When enabled, requests results to be returned as base64-encoded data instead of a URL. This keeps images within your system and doesn't expose them via external URLs. Only works if the provider supports this option.
+                    </span>
+                  </span>
                 </label>
               </div>
             </div>
