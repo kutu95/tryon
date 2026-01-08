@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
 import { downloadFile, uploadFile } from '@/lib/storage'
 import { tuneGarmentPhoto, type OpenAIImageOptions } from '@/lib/server/openaiImage'
+import { processImageForUpload } from '@/lib/server/imageProcessing'
 import { randomUUID } from 'crypto'
 
 export const runtime = 'nodejs' // Ensure Node.js runtime for OpenAI
@@ -44,7 +45,10 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to download original image' }, { status: 500 })
     }
     
-    const imageBuffer = Buffer.from(await originalImage.arrayBuffer())
+    const originalBuffer = Buffer.from(await originalImage.arrayBuffer())
+    
+    // Process image to ensure RGBA format and under 4MB (in case it's an old upload)
+    const imageBuffer = await processImageForUpload(originalBuffer)
     
     // Tune the image with OpenAI
     let tunedResult: { image: Buffer; mask?: Buffer }
