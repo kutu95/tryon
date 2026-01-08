@@ -52,14 +52,18 @@ export async function POST(
     // This preserves aspect ratio in the input
     const imageBuffer = await processImageForUpload(originalBuffer)
     
-    // Get original dimensions for aspect ratio preservation
-    const imageMetadata = await sharp(originalBuffer).metadata()
-    const originalWidth = imageMetadata.width || 1024
-    const originalHeight = imageMetadata.height || 1024
-    const originalAspectRatio = originalWidth / originalHeight
+    // Get aspect ratio from processed image (after rotation and resizing)
+    const processedMetadata = await sharp(imageBuffer).metadata()
+    const processedWidth = processedMetadata.width || 1024
+    const processedHeight = processedMetadata.height || 1024
+    const processedAspectRatio = processedWidth / processedHeight
     
     // Pad image to square before sending to OpenAI (they require square input)
-    const paddedBuffer = await padImageToSquare(imageBuffer, originalAspectRatio)
+    // Store padding info for later cropping
+    const paddedBuffer = await padImageToSquare(imageBuffer, processedAspectRatio)
+    const paddedMetadata = await sharp(paddedBuffer).metadata()
+    const paddedWidth = paddedMetadata.width || 1024
+    const paddedHeight = paddedMetadata.height || 1024
     
     // Use square size (required by OpenAI)
     const finalOptions = {
@@ -72,8 +76,20 @@ export async function POST(
     try {
       tunedBuffer = await tuneActorPhoto(paddedBuffer, finalOptions)
       
-      // Crop back to original aspect ratio
-      tunedBuffer = await cropToAspectRatio(tunedBuffer, originalAspectRatio)
+      // Verify output is square (as OpenAI should return)
+      const tunedMetadata = await sharp(tunedBuffer).metadata()
+      const tunedWidth = tunedMetadata.width || paddedWidth
+      const tunedHeight = tunedMetadata.height || paddedHeight
+      
+      // Crop back to processed aspect ratio (which matches original after rotation)
+      tunedBuffer = await cropToAspectRatio(tunedBuffer, processedAspectRatio)
+      
+      // Verify final aspect ratio matches processed image
+      const finalMetadata = await sharp(tunedBuffer).metadata()
+      const finalAspectRatio = (finalMetadata.width || processedWidth) / (finalMetadata.height || processedHeight)
+      if (Math.abs(finalAspectRatio - processedAspectRatio) > 0.05) {
+        console.warn(`[API] Aspect ratio mismatch: expected ${processedAspectRatio}, got ${finalAspectRatio}`)
+      }
     } catch (error: any) {
       console.error('[API] Error tuning actor photo:', error)
       return NextResponse.json(

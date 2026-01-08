@@ -109,7 +109,7 @@ export async function tuneActorPhoto(
   const requestId = opts.requestId || `actor-tune-${Date.now()}`
   const timeoutMs = opts.timeoutMs || DEFAULT_TIMEOUT_MS
 
-  const prompt = `Improve this actor photo for a virtual try-on catalog. Keep the same person and identity. Do NOT change face, body shape, pose, skin tone, tattoos, hair style, age, or clothing style. Only correct exposure and white balance, reduce noise, improve clarity slightly, and optionally simplify or clean the background to a neutral studio-like background. Maintain full photorealism. Do not add accessories or alter the scene.`
+  const prompt = `Fix ONLY minor technical issues: adjust exposure if needed, correct white balance, reduce noise slightly. Do NOT change the person, face, body, pose, clothing, background objects, or scene composition. Do NOT add anything new. Do NOT remove anything. Do NOT change aspect ratio. Keep everything exactly as it is. Only make minimal technical corrections.`
 
   try {
     // Prepare image: convert to PNG and ensure under 4MB

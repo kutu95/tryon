@@ -51,14 +51,14 @@ export async function POST(
     // Process image to ensure RGBA format and under 4MB (in case it's an old upload)
     const imageBuffer = await processImageForUpload(originalBuffer)
     
-    // Get original dimensions for aspect ratio preservation
-    const imageMetadata = await sharp(originalBuffer).metadata()
-    const originalWidth = imageMetadata.width || 1024
-    const originalHeight = imageMetadata.height || 1024
-    const originalAspectRatio = originalWidth / originalHeight
+    // Get aspect ratio from processed image (after rotation and resizing)
+    const processedMetadata = await sharp(imageBuffer).metadata()
+    const processedWidth = processedMetadata.width || 1024
+    const processedHeight = processedMetadata.height || 1024
+    const processedAspectRatio = processedWidth / processedHeight
     
     // Pad image to square before sending to OpenAI (they require square input)
-    const paddedBuffer = await padImageToSquare(imageBuffer, originalAspectRatio)
+    const paddedBuffer = await padImageToSquare(imageBuffer, processedAspectRatio)
     
     // Use square size (required by OpenAI)
     const finalOptions = {
@@ -71,8 +71,8 @@ export async function POST(
     try {
       tunedResult = await tuneGarmentPhoto(paddedBuffer, finalOptions)
       
-      // Crop back to original aspect ratio
-      tunedResult.image = await cropToAspectRatio(tunedResult.image, originalAspectRatio)
+      // Crop back to processed aspect ratio (which matches original after rotation)
+      tunedResult.image = await cropToAspectRatio(tunedResult.image, processedAspectRatio)
     } catch (error: any) {
       console.error('[API] Error tuning garment image:', error)
       return NextResponse.json(
