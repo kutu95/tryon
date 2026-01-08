@@ -10,6 +10,7 @@ interface User {
   created_at: string
   role: 'admin' | 'stylist' | 'viewer'
   display_name: string | null
+  profile_picture_path?: string | null
 }
 
 export default function AdminUsersPage() {
@@ -19,6 +20,7 @@ export default function AdminUsersPage() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+  const [profilePictureUrls, setProfilePictureUrls] = useState<Record<string, string>>({})
   const supabase = createClient()
   
   // Create form state
@@ -72,6 +74,25 @@ export default function AdminUsersPage() {
       
       if (response.ok) {
         setUsers(data)
+        
+        // Fetch signed URLs for profile pictures
+        const urls: Record<string, string> = {}
+        for (const user of data) {
+          if (user.profile_picture_path) {
+            try {
+              const urlResponse = await fetch(
+                `/api/storage/signed-url?bucket=profiles&path=${encodeURIComponent(user.profile_picture_path)}`
+              )
+              if (urlResponse.ok) {
+                const { url } = await urlResponse.json()
+                urls[user.id] = url
+              }
+            } catch (error) {
+              console.error(`Error fetching signed URL for user ${user.id}:`, error)
+            }
+          }
+        }
+        setProfilePictureUrls(urls)
       } else {
         setError(data.error || 'Failed to fetch users')
         if (response.status === 401) {
@@ -300,7 +321,20 @@ export default function AdminUsersPage() {
             {users.map((user) => (
               <tr key={user.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {user.email}
+                  <div className="flex items-center gap-3">
+                    {profilePictureUrls[user.id] ? (
+                      <img
+                        src={profilePictureUrls[user.id]}
+                        alt={user.display_name || user.email}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-xs font-medium">
+                        {(user.display_name || user.email).charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span>{user.email}</span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {editingUserId === user.id ? (
