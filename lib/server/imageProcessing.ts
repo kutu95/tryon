@@ -37,7 +37,7 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
     .toBuffer({ resolveWithObject: true })
   
   // Now encode as PNG with explicit RGBA format (4 channels)
-  // Start with maximum compression
+  // Use compression level 6 for better size/quality balance (level 9 can be larger)
   let output = await sharp(rgbaBuffer.data, {
     raw: {
       width: rgbaBuffer.info.width,
@@ -45,21 +45,40 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
       channels: 4 // Explicitly RGBA (4 channels)
     }
   })
-    .png({ compressionLevel: 9, adaptiveFiltering: true })
+    .png({ compressionLevel: 6, adaptiveFiltering: true })
     .toBuffer()
   
-  // If still too large, progressively reduce dimensions more aggressively
+  // If still too large, progressively reduce dimensions
   let scale = 0.8
   let attempts = 0
-  const maxAttempts = 10
+  const maxAttempts = 15
   
-  while (output.length > MAX_SIZE_BYTES && scale > 0.3 && attempts < maxAttempts) {
+  while (output.length > MAX_SIZE_BYTES && scale > 0.2 && attempts < maxAttempts) {
     attempts++
     const newWidth = Math.floor((metadata.width || 1024) * scale)
     const newHeight = Math.floor((metadata.height || 1024) * scale)
     
     // Ensure minimum dimensions
-    if (newWidth < 256 || newHeight < 256) {
+    if (newWidth < 512 || newHeight < 512) {
+      // Last resort: use very small dimensions
+      const finalWidth = Math.min(1024, newWidth)
+      const finalHeight = Math.min(1024, newHeight)
+      
+      const finalRgba = await sharp(input)
+        .resize(finalWidth, finalHeight, { fit: 'inside', withoutEnlargement: true })
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true })
+      
+      output = await sharp(finalRgba.data, {
+        raw: {
+          width: finalRgba.info.width,
+          height: finalRgba.info.height,
+          channels: 4
+        }
+      })
+        .png({ compressionLevel: 6, adaptiveFiltering: true })
+        .toBuffer()
       break
     }
     
@@ -76,34 +95,15 @@ export async function processImageForUpload(input: Buffer): Promise<Buffer> {
         channels: 4 // Explicitly RGBA
       }
     })
-      .png({ compressionLevel: 9, adaptiveFiltering: true })
+      .png({ compressionLevel: 6, adaptiveFiltering: true })
       .toBuffer()
     
     // Reduce scale more aggressively if still too large
     if (output.length > MAX_SIZE_BYTES) {
-      scale -= 0.15 // More aggressive reduction
+      scale -= 0.1 // Progressive reduction
     } else {
       break
     }
-  }
-  
-  // Final check: if still too large, use lower compression level (slightly lower quality but smaller file)
-  if (output.length > MAX_SIZE_BYTES) {
-    const finalRgba = await sharp(input)
-      .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
-      .ensureAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true })
-    
-    output = await sharp(finalRgba.data, {
-      raw: {
-        width: finalRgba.info.width,
-        height: finalRgba.info.height,
-        channels: 4
-      }
-    })
-      .png({ compressionLevel: 6, adaptiveFiltering: true }) // Lower compression for smaller file
-      .toBuffer()
   }
   
   if (output.length > MAX_SIZE_BYTES) {
