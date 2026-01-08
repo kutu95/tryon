@@ -188,7 +188,7 @@ export async function tuneGarmentPhoto(
   const requestId = opts.requestId || `garment-tune-${Date.now()}`
   const timeoutMs = opts.timeoutMs || DEFAULT_TIMEOUT_MS
 
-  const prompt = `Create a clean product cutout of this garment. Remove the background completely (transparent). Preserve exact garment shape, proportions, textures, stitching, logos, patterns, and colors. Do NOT invent or modify details. Photorealistic, product-photo style.`
+  const prompt = `Remove ONLY the background. Make background transparent. Do NOT change the garment. Do NOT modify shape, size, colors, textures, patterns, logos, or any details. Do NOT add anything. Do NOT remove any part of the garment. Keep garment exactly as shown. Only remove background pixels.`
 
   try {
     // Prepare image: convert to PNG and ensure under 4MB
