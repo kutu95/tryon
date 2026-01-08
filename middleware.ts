@@ -56,9 +56,16 @@ export async function middleware(request: NextRequest) {
     supabaseUrl: supabaseUrl
   })
 
-  // Exclude public API routes from authentication
+  // Exclude public API routes and static files from authentication
   const publicRoutes = ['/api/storage/proxy']
+  const staticFiles = ['/manifest.json', '/sw.js', '/favicon', '/apple-touch-icon', '/android-chrome']
   const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
+  const isStaticFile = staticFiles.some(file => request.nextUrl.pathname.includes(file))
+  
+  // Skip middleware for static files
+  if (isStaticFile) {
+    return supabaseResponse
+  }
   
   // Protect routes that require authentication
   if ((!user || userError) && !request.nextUrl.pathname.startsWith('/login') && !isPublicRoute) {
