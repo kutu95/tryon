@@ -12,6 +12,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'Costume Stylist',
   },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
   icons: {
     icon: [
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
