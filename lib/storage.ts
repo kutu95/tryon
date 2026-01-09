@@ -18,7 +18,6 @@ export async function getSignedUrl(bucket: string, path: string, expiresIn: numb
         bucket,
         path: cleanPath,
         error: error.message,
-        errorCode: error.statusCode,
         errorDetails: error
       })
       return null
