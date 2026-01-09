@@ -16,17 +16,27 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    const url = await getSignedUrl(bucket, path)
+    // Decode the path in case it's double-encoded
+    const decodedPath = decodeURIComponent(path)
+    
+    console.log('[Signed URL] Request:', { bucket, path: decodedPath })
+    
+    const url = await getSignedUrl(bucket, decodedPath)
     if (!url) {
+      console.error('[Signed URL] Failed to generate URL for:', { bucket, path: decodedPath })
       return NextResponse.json(
-        { error: 'Failed to generate signed URL' },
+        { error: 'Failed to generate signed URL. The file may not exist or you may not have permission.' },
         { status: 500 }
       )
     }
     
     return NextResponse.json({ url })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[Signed URL] Error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Internal server error', details: error.stack },
+      { status: 500 }
+    )
   }
 }
 
