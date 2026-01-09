@@ -97,17 +97,81 @@ export async function DELETE(
     
     console.log('[Delete Image] Found image:', { storagePath: image.storage_path })
     
-    // Check for related try-on jobs (we'll preserve them by setting foreign key to NULL)
+    // Check if this image is used in any try-ons that were saved to look boards
     const { data: relatedJobs, error: jobsFetchError } = await supabase
       .from('tryon_jobs')
-      .select('id')
+      .select(`
+        id,
+        result_storage_path,
+        look_items (id)
+      `)
       .eq('garment_image_id', params.imageId)
     
     if (jobsFetchError) {
       console.error('[Delete Image] Error fetching related jobs:', jobsFetchError)
-    } else if (relatedJobs && relatedJobs.length > 0) {
-      console.log('[Delete Image] Found related try-on jobs:', { count: relatedJobs.length })
-      console.log('[Delete Image] Preserving try-on results - foreign keys will be set to NULL')
+      return NextResponse.json(
+        { error: 'Failed to check if image is in use' },
+        { status: 500 }
+      )
+    }
+    
+    if (relatedJobs && relatedJobs.length > 0) {
+      // Check if any jobs have associated look_items (saved to look boards)
+      const jobsWithLookItems = relatedJobs.filter((job: any) => 
+        job.look_items && job.look_items.length > 0
+      )
+      
+      if (jobsWithLookItems.length > 0) {
+        const lookItemCount = jobsWithLookItems.reduce((sum: number, job: any) => 
+          sum + (job.look_items?.length || 0), 0
+        )
+        
+        console.log('[Delete Image] Image is used in saved try-ons:', {
+          jobsWithLookItems: jobsWithLookItems.length,
+          totalLookItems: lookItemCount
+        })
+        
+        return NextResponse.json(
+          { 
+            error: 'Cannot delete image',
+            message: `This image cannot be deleted because it was used to create ${lookItemCount} try-on image${lookItemCount > 1 ? 's' : ''} that ${lookItemCount > 1 ? 'are' : 'is'} saved to look board${lookItemCount > 1 ? 's' : ''}. Please delete the look board items first if you want to remove this image.`
+          },
+          { status: 409 } // 409 Conflict
+        )
+      }
+      
+      // No look_items found - safe to delete jobs and their results
+      console.log('[Delete Image] Found try-on jobs not saved to look boards:', { count: relatedJobs.length })
+      
+      // Delete result images from storage
+      for (const job of relatedJobs) {
+        if (job.result_storage_path) {
+          const { error: resultDeleteError } = await adminSupabase.storage
+            .from('tryons')
+            .remove([job.result_storage_path])
+          
+          if (resultDeleteError) {
+            console.error('[Delete Image] Error deleting try-on result:', {
+              jobId: job.id,
+              path: job.result_storage_path,
+              error: resultDeleteError.message
+            })
+          }
+        }
+      }
+      
+      // Delete the try-on jobs (they weren't saved to look boards)
+      const { error: jobsDeleteError } = await supabase
+        .from('tryon_jobs')
+        .delete()
+        .eq('garment_image_id', params.imageId)
+      
+      if (jobsDeleteError) {
+        console.error('[Delete Image] Error deleting related jobs:', jobsDeleteError)
+        throw jobsDeleteError
+      }
+      
+      console.log('[Delete Image] Successfully deleted related try-on jobs and results')
     }
     
     // Delete from storage

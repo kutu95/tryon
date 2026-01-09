@@ -1,5 +1,5 @@
 -- Make actor_photo_id and garment_image_id nullable in tryon_jobs
--- This allows preserving try-on results even when source photos/images are deleted
+-- This allows cleaning up references when photos are deleted (if not saved to look boards)
 
 -- Drop the existing foreign key constraints
 ALTER TABLE tryon_schema.tryon_jobs

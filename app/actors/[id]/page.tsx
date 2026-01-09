@@ -272,7 +272,9 @@ export default function ActorDetailPage() {
         })
       } else {
         const error = await response.json()
-        alert(`Error: ${error.error || 'Failed to delete photo'}`)
+        // Show the detailed message if available (for blocked deletions)
+        const message = error.message || error.error || 'Failed to delete photo'
+        alert(message)
       }
     } catch (error) {
       console.error('Error deleting photo:', error)
