@@ -80,46 +80,17 @@ export async function DELETE(
     
     console.log('[Delete Photo] Found photo:', { storagePath: photo.storage_path })
     
-    // First, delete related try-on jobs (and their results from storage)
+    // Check for related try-on jobs (we'll preserve them by setting foreign key to NULL)
     const { data: relatedJobs, error: jobsFetchError } = await supabase
       .from('tryon_jobs')
-      .select('id, result_storage_path')
+      .select('id')
       .eq('actor_photo_id', params.photoId)
     
     if (jobsFetchError) {
       console.error('[Delete Photo] Error fetching related jobs:', jobsFetchError)
     } else if (relatedJobs && relatedJobs.length > 0) {
       console.log('[Delete Photo] Found related try-on jobs:', { count: relatedJobs.length })
-      
-      // Delete result images from storage
-      for (const job of relatedJobs) {
-        if (job.result_storage_path) {
-          const { error: resultDeleteError } = await adminSupabase.storage
-            .from('tryons')
-            .remove([job.result_storage_path])
-          
-          if (resultDeleteError) {
-            console.error('[Delete Photo] Error deleting try-on result:', {
-              jobId: job.id,
-              path: job.result_storage_path,
-              error: resultDeleteError.message
-            })
-          }
-        }
-      }
-      
-      // Delete the try-on jobs (this will cascade to look_items via ON DELETE SET NULL)
-      const { error: jobsDeleteError } = await supabase
-        .from('tryon_jobs')
-        .delete()
-        .eq('actor_photo_id', params.photoId)
-      
-      if (jobsDeleteError) {
-        console.error('[Delete Photo] Error deleting related jobs:', jobsDeleteError)
-        throw jobsDeleteError
-      }
-      
-      console.log('[Delete Photo] Successfully deleted related try-on jobs')
+      console.log('[Delete Photo] Preserving try-on results - foreign keys will be set to NULL')
     }
     
     // Delete from storage
