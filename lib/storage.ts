@@ -9,6 +9,29 @@ export async function getSignedUrl(bucket: string, path: string, expiresIn: numb
     
     console.log('[Storage] Creating signed URL:', { bucket, path: cleanPath, expiresIn })
     
+    // First, check if the file exists
+    const { data: listData, error: listError } = await supabase.storage
+      .from(bucket)
+      .list(cleanPath.split('/').slice(0, -1).join('/') || '', {
+        limit: 1000,
+        search: cleanPath.split('/').pop() || ''
+      })
+    
+    if (listError) {
+      console.error('[Storage] Error listing files:', {
+        bucket,
+        path: cleanPath,
+        error: listError.message
+      })
+    } else {
+      console.log('[Storage] File check:', {
+        bucket,
+        path: cleanPath,
+        found: listData && listData.length > 0,
+        files: listData?.map(f => f.name)
+      })
+    }
+    
     const { data, error } = await supabase.storage
       .from(bucket)
       .createSignedUrl(cleanPath, expiresIn)
@@ -18,7 +41,8 @@ export async function getSignedUrl(bucket: string, path: string, expiresIn: numb
         bucket,
         path: cleanPath,
         error: error.message,
-        errorDetails: error
+        errorName: error.name,
+        errorDetails: JSON.stringify(error, null, 2)
       })
       return null
     }
