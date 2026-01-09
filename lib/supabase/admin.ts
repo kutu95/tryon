@@ -38,6 +38,14 @@ export function createAdminClient() {
             })
           }
           
+          // For storage requests, ensure we use the public URL (tunnel) if available
+          // Storage API needs to be accessible from the public URL
+          if (urlString.includes('/storage/v1/')) {
+            console.log('[Admin Client] Storage request:', urlString)
+            // Use authUrl (which is the public URL) for storage
+            return fetch(url, options)
+          }
+          
           // For auth admin API requests, use the auth URL (public/tunnel)
           console.log('[Admin Client] Auth request:', urlString)
           return fetch(url, options)
