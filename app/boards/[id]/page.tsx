@@ -48,6 +48,13 @@ export default function BoardDetailPage() {
   const [editDescription, setEditDescription] = useState('')
   const [movingItemId, setMovingItemId] = useState<string | null>(null)
   const [allBoards, setAllBoards] = useState<LookBoard[]>([])
+  const [viewingSourcesItemId, setViewingSourcesItemId] = useState<string | null>(null)
+  const [sourceImageUrls, setSourceImageUrls] = useState<{
+    result?: string
+    actor?: string
+    garment?: string
+  }>({})
+  const [loadingSources, setLoadingSources] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -212,6 +219,55 @@ export default function BoardDetailPage() {
     }
   }
 
+  const handleViewSources = async (item: LookItem) => {
+    if (!item.tryon_jobs) {
+      alert('Source images are not available for this item')
+      return
+    }
+
+    setViewingSourcesItemId(item.id)
+    setLoadingSources(true)
+    setSourceImageUrls({})
+
+    const urls: { result?: string; actor?: string; garment?: string } = {}
+
+    try {
+      // Get result image URL (already have it in signedUrls)
+      if (signedUrls[item.id]) {
+        urls.result = signedUrls[item.id]
+      }
+
+      // Get actor photo URL
+      if (item.tryon_jobs.actor_photos?.storage_path) {
+        const actorResponse = await fetch(
+          `/api/storage/signed-url?bucket=actors&path=${encodeURIComponent(item.tryon_jobs.actor_photos.storage_path)}`
+        )
+        if (actorResponse.ok) {
+          const { url } = await actorResponse.json()
+          urls.actor = url
+        }
+      }
+
+      // Get garment image URL
+      if (item.tryon_jobs.garment_images?.storage_path) {
+        const garmentResponse = await fetch(
+          `/api/storage/signed-url?bucket=garments&path=${encodeURIComponent(item.tryon_jobs.garment_images.storage_path)}`
+        )
+        if (garmentResponse.ok) {
+          const { url } = await garmentResponse.json()
+          urls.garment = url
+        }
+      }
+
+      setSourceImageUrls(urls)
+    } catch (error) {
+      console.error('Error loading source images:', error)
+      alert('Failed to load source images')
+    } finally {
+      setLoadingSources(false)
+    }
+  }
+
   const canEdit = board && currentUser && (board.created_by === currentUser.id || profile?.role === 'admin')
 
   const fetchItems = async () => {
@@ -331,24 +387,35 @@ export default function BoardDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => (
           <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden relative group">
-            {canEdit && (
-              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+              {item.tryon_jobs && (
                 <button
-                  onClick={() => setMovingItemId(item.id)}
-                  className="bg-blue-600 text-white text-xs px-2 py-1 rounded hover:bg-blue-700"
-                  title="Move to another board"
+                  onClick={() => handleViewSources(item)}
+                  className="bg-indigo-600 text-white text-xs px-2 py-1 rounded hover:bg-indigo-700"
+                  title="View source images"
                 >
-                  Move
+                  Sources
                 </button>
-                <button
-                  onClick={() => handleDeleteItem(item.id)}
-                  className="bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700"
-                  title="Delete item"
-                >
-                  Delete
-                </button>
-              </div>
-            )}
+              )}
+              {canEdit && (
+                <>
+                  <button
+                    onClick={() => setMovingItemId(item.id)}
+                    className="bg-blue-600 text-white text-xs px-2 py-1 rounded hover:bg-blue-700"
+                    title="Move to another board"
+                  >
+                    Move
+                  </button>
+                  <button
+                    onClick={() => handleDeleteItem(item.id)}
+                    className="bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700"
+                    title="Delete item"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
             {signedUrls[item.id] ? (
               <div
                 className="w-full h-64 bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
@@ -416,6 +483,122 @@ export default function BoardDetailPage() {
       {items.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           No items in this board yet. Add try-on results from the Studio.
+        </div>
+      )}
+
+      {/* View Sources Modal */}
+      {viewingSourcesItemId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+          onClick={() => {
+            setViewingSourcesItemId(null)
+            setSourceImageUrls({})
+          }}
+        >
+          <div
+            className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-xl font-semibold">Source Images</h2>
+              <button
+                onClick={() => {
+                  setViewingSourcesItemId(null)
+                  setSourceImageUrls({})
+                }}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="Close"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {loadingSources ? (
+                <div className="text-center py-8">Loading source images...</div>
+              ) : (
+                <>
+                  {/* Final Result */}
+                  {sourceImageUrls.result && (
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold text-gray-900">Final Try-On Result</h3>
+                      <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-center min-h-[300px]">
+                        <img
+                          src={sourceImageUrls.result}
+                          alt="Final try-on result"
+                          className="max-w-full max-h-[600px] object-contain"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Actor Photo */}
+                  {sourceImageUrls.actor ? (
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold text-gray-900">Actor Photo</h3>
+                      <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-center min-h-[300px]">
+                        <img
+                          src={sourceImageUrls.actor}
+                          alt="Actor photo"
+                          className="max-w-full max-h-[600px] object-contain"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    sourceImageUrls.result && (
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-semibold text-gray-900">Actor Photo</h3>
+                        <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-center min-h-[300px] text-gray-500">
+                          Actor photo not available
+                        </div>
+                      </div>
+                    )
+                  )}
+                  
+                  {/* Garment Image */}
+                  {sourceImageUrls.garment ? (
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold text-gray-900">Garment Image</h3>
+                      <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-center min-h-[300px]">
+                        <img
+                          src={sourceImageUrls.garment}
+                          alt="Garment image"
+                          className="max-w-full max-h-[600px] object-contain"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    sourceImageUrls.result && (
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-semibold text-gray-900">Garment Image</h3>
+                        <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-center min-h-[300px] text-gray-500">
+                          Garment image not available
+                        </div>
+                      </div>
+                    )
+                  )}
+                  
+                  {!sourceImageUrls.result && !sourceImageUrls.actor && !sourceImageUrls.garment && (
+                    <div className="text-center py-8 text-gray-500">
+                      No source images available for this item
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
