@@ -97,7 +97,20 @@ export async function DELETE(
     
     console.log('[Delete Image] Found image:', { storagePath: image.storage_path })
     
-    // Delete from storage first
+    // Check for related try-on jobs (we'll preserve them by setting foreign key to NULL)
+    const { data: relatedJobs, error: jobsFetchError } = await supabase
+      .from('tryon_jobs')
+      .select('id')
+      .eq('garment_image_id', params.imageId)
+    
+    if (jobsFetchError) {
+      console.error('[Delete Image] Error fetching related jobs:', jobsFetchError)
+    } else if (relatedJobs && relatedJobs.length > 0) {
+      console.log('[Delete Image] Found related try-on jobs:', { count: relatedJobs.length })
+      console.log('[Delete Image] Preserving try-on results - foreign keys will be set to NULL')
+    }
+    
+    // Delete from storage
     const { error: storageError } = await adminSupabase.storage
       .from('garments')
       .remove([image.storage_path])
