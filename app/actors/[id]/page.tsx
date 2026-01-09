@@ -151,15 +151,35 @@ export default function ActorDetailPage() {
       const data = await response.json()
       setPhotos(data)
       
-      // Get signed URLs for all photos
+      // Get signed URLs for all photos, filter out orphaned records (files that don't exist)
       const urls: Record<string, string> = {}
+      const validPhotos: ActorPhoto[] = []
+      
       for (const photo of data) {
         const urlResponse = await fetch(`/api/storage/signed-url?bucket=actors&path=${encodeURIComponent(photo.storage_path)}`)
         if (urlResponse.ok) {
           const { url } = await urlResponse.json()
           urls[photo.id] = url
+          validPhotos.push(photo)
+        } else if (urlResponse.status === 404) {
+          // File doesn't exist - this is an orphaned record
+          console.warn('[Actor Photos] Orphaned photo record (file not found):', {
+            photoId: photo.id,
+            storagePath: photo.storage_path,
+            actorId: params.id
+          })
+          // Don't add to validPhotos - this will hide it from the UI
+        } else {
+          // Other error - log but still try to show it
+          console.error('[Actor Photos] Error fetching signed URL:', {
+            photoId: photo.id,
+            status: urlResponse.status
+          })
         }
       }
+      
+      // Update photos list to only show valid ones (with existing files)
+      setPhotos(validPhotos)
       setSignedUrls(urls)
     } catch (error) {
       console.error('Error fetching photos:', error)

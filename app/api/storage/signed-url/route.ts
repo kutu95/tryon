@@ -24,9 +24,10 @@ export async function GET(request: NextRequest) {
     const url = await getSignedUrl(bucket, decodedPath)
     if (!url) {
       console.error('[Signed URL] Failed to generate URL for:', { bucket, path: decodedPath })
+      // Return 404 if file doesn't exist (more appropriate than 500)
       return NextResponse.json(
-        { error: 'Failed to generate signed URL. The file may not exist or you may not have permission.' },
-        { status: 500 }
+        { error: 'File not found', path: decodedPath },
+        { status: 404 }
       )
     }
     
