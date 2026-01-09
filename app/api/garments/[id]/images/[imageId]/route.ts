@@ -71,3 +71,78 @@ export async function PUT(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string; imageId: string } }
+) {
+  try {
+    await requireAuth()
+    const supabase = await createClient()
+    const adminSupabase = createAdminClient()
+    
+    console.log('[Delete Image] Starting deletion:', { garmentId: params.id, imageId: params.imageId })
+    
+    // Get the image record to find the storage path
+    const { data: image, error: fetchError } = await supabase
+      .from('garment_images')
+      .select('storage_path')
+      .eq('id', params.imageId)
+      .eq('garment_id', params.id)
+      .single()
+    
+    if (fetchError || !image) {
+      console.error('[Delete Image] Image not found:', { imageId: params.imageId, error: fetchError })
+      return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+    }
+    
+    console.log('[Delete Image] Found image:', { storagePath: image.storage_path })
+    
+    // Delete from storage first
+    const { error: storageError } = await adminSupabase.storage
+      .from('garments')
+      .remove([image.storage_path])
+    
+    if (storageError) {
+      console.error('[Delete Image] Error deleting from storage:', {
+        storagePath: image.storage_path,
+        error: storageError.message
+      })
+      // Continue anyway - we'll still try to delete the database record
+    } else {
+      console.log('[Delete Image] Successfully deleted from storage:', image.storage_path)
+    }
+    
+    // Delete the database record - this is critical and must succeed
+    const { error: deleteError, data: deleteData } = await supabase
+      .from('garment_images')
+      .delete()
+      .eq('id', params.imageId)
+      .eq('garment_id', params.id)
+      .select()
+    
+    if (deleteError) {
+      console.error('[Delete Image] Error deleting database record:', {
+        imageId: params.imageId,
+        error: deleteError.message,
+        code: deleteError.code
+      })
+      throw deleteError
+    }
+    
+    console.log('[Delete Image] Successfully deleted database record:', { deletedCount: deleteData?.length || 0 })
+    
+    return NextResponse.json({ success: true, deleted: deleteData })
+  } catch (error: any) {
+    console.error('[Delete Image] Exception during deletion:', {
+      garmentId: params.id,
+      imageId: params.imageId,
+      error: error.message,
+      stack: error.stack
+    })
+    return NextResponse.json({ 
+      error: error.message || 'Internal server error',
+      details: error.details || error.hint || null,
+      code: error.code || null
+    }, { status: 500 })
+  }
+}
