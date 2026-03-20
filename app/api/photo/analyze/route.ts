@@ -3,6 +3,8 @@ import { requireAuth } from '@/lib/auth'
 import { PhotoKind, PhotoAnalysisPartial } from '@/lib/photoAnalysis/types'
 import sharp from 'sharp'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 // Simple in-memory cache for analysis results (keyed by image hash)
 const analysisCache = new Map<string, { result: PhotoAnalysisPartial; timestamp: number }>()
 const CACHE_TTL = 60 * 60 * 1000 // 1 hour

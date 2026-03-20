@@ -4,6 +4,8 @@ import { requireAuth } from '@/lib/auth'
 import { getTryOnProvider } from '@/src/server/tryon/providers'
 import { getSignedUrl, uploadFile, downloadFile } from '@/lib/storage'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

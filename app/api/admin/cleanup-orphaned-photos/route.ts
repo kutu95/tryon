@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAuth, getCurrentProfile } from '@/lib/auth'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 /**
  * Cleanup endpoint to identify and optionally delete orphaned actor photo and garment image records.
  * Orphaned records are database entries that reference files that no longer exist in storage.

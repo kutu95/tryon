@@ -3,6 +3,8 @@ import { requireAuth } from '@/lib/auth'
 import { getTryOnProvider } from '@/src/server/tryon/providers'
 import { FashnProvider } from '@/src/server/tryon/providers/fashn'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     await requireAuth()

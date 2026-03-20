@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { getSignedUrl } from '@/lib/storage'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     await requireAuth()

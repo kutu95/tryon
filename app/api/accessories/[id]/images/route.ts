@@ -4,6 +4,8 @@ import { requireAuth } from '@/lib/auth'
 import { uploadFile } from '@/lib/storage'
 import { randomUUID } from 'crypto'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

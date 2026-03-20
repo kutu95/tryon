@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
 import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 export async function GET() {
   try {
     const user = await requireAuth()

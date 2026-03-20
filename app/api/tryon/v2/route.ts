@@ -6,6 +6,8 @@ import { uploadFile } from '@/lib/storage'
 import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 import { type TryOnRequest } from '@/lib/fashn/types'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 export const runtime = 'nodejs' // Ensure Node.js runtime
 
 export async function POST(request: NextRequest) {

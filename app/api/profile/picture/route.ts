@@ -6,6 +6,8 @@ import { processImageForUpload } from '@/lib/server/imageProcessing'
 import { randomUUID } from 'crypto'
 import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()

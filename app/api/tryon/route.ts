@@ -5,6 +5,8 @@ import { getTryOnProvider } from '@/src/server/tryon/providers'
 import { getSignedUrl } from '@/lib/storage'
 import { logAuditEvent, getRequestMetadata } from '@/lib/audit'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()

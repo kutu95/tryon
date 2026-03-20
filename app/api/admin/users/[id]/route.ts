@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireRole } from '@/lib/auth'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 // PUT - Update user role or profile (admin only)
 export async function PUT(
   request: NextRequest,

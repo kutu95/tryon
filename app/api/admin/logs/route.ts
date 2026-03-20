@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth'
 
+export { dynamic } from '@/lib/api-force-dynamic'
+
 /**
  * GET - Fetch audit logs (admin only)
  * Supports pagination and filtering
