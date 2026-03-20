@@ -302,6 +302,31 @@ export default function ActorDetailPage() {
     }
   }
 
+  const handleDeleteActor = async () => {
+    if (!confirm('Are you sure you want to delete this actor? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/actors/${params.id}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        // Redirect to actors list
+        router.push('/actors')
+      } else {
+        const error = await response.json()
+        // Show the detailed message if available (for blocked deletions)
+        const message = error.message || error.error || 'Failed to delete actor'
+        alert(message)
+      }
+    } catch (error) {
+      console.error('Error deleting actor:', error)
+      alert('Failed to delete actor')
+    }
+  }
+
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>
@@ -363,12 +388,20 @@ export default function ActorDetailPage() {
             )}
           </div>
           {canEdit && !isEditing && (
-            <button
-              onClick={handleEdit}
-              className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              Edit
-            </button>
+            <div className="ml-4 flex gap-2">
+              <button
+                onClick={handleEdit}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              >
+                Edit
+              </button>
+              <button
+                onClick={handleDeleteActor}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                Delete Actor
+              </button>
+            </div>
           )}
         </div>
       </div>
