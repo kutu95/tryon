@@ -1,11 +1,10 @@
 // Service Worker for Costume Stylist Virtual Try-On
-const CACHE_NAME = 'costume-stylist-v3'
+// Bump version when changing caching rules (clients drop old caches on activate).
+const CACHE_NAME = 'costume-stylist-v5'
+// Only precache public static assets — not /studio, /actors, etc. Those require
+// auth and often 307 to /login during install; caching them causes brittle SW
+// behavior and confusing offline fallbacks.
 const urlsToCache = [
-  '/studio',
-  '/actors',
-  '/garments',
-  '/boards',
-  '/help',
   '/favicon.ico',
   '/favicon-16x16.png',
   '/favicon-32x32.png',
@@ -58,42 +57,10 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  const url = new URL(event.request.url)
-  
-  // For navigation requests (page loads), always try network first
+  // Full document navigations (address bar, links with full load): do NOT intercept.
+  // Handling these with fetch()+respondWith() breaks native 307/302 handling in
+  // some browsers (ERR_FAILED on /studio instead of following redirect to /login).
   if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request, { 
-        redirect: 'follow',
-        cache: 'no-cache' // Always get fresh content for navigation
-      })
-        .then((response) => {
-          // Only cache successful, non-redirected responses
-          if (response && response.status === 200 && !response.redirected) {
-            const responseToCache = response.clone()
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache).catch(() => {
-                // Ignore cache errors
-              })
-            })
-          }
-          return response
-        })
-        .catch((error) => {
-          // If network fails, try cache as fallback
-          return caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse
-            }
-            // If no cache, return a basic offline page
-            return new Response('Network error. Please check your connection.', {
-              status: 503,
-              statusText: 'Service Unavailable',
-              headers: { 'Content-Type': 'text/plain' }
-            })
-          })
-        })
-    )
     return
   }
 

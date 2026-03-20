@@ -101,7 +101,7 @@ credentials-file: /path/to/credentials.json
 
 ingress:
   - hostname: tryon.margies.app
-    service: http://localhost:3000
+    service: http://localhost:3002
   - service: http_status:404
 ```
 
@@ -111,7 +111,7 @@ Or if you have multiple services, add it to the existing config:
 ingress:
   # Existing services...
   - hostname: tryon.margies.app
-    service: http://localhost:3000
+    service: http://localhost:3002
   - service: http_status:404
 ```
 
@@ -156,7 +156,7 @@ module.exports = {
     max_memory_restart: '1G',
     env: {
       NODE_ENV: 'production',
-      PORT: 3000
+      PORT: 3002
     }
   }]
 }
@@ -177,9 +177,9 @@ pm2 startup  # Follow instructions to enable on boot
    pm2 logs tryon
    ```
 
-2. Test locally on server:
+2. Test locally on server (same port as `ecosystem.config.js`, e.g. 3002):
    ```bash
-   curl http://localhost:3000
+   curl http://localhost:3002
    ```
 
 3. Test via tunnel:
@@ -196,7 +196,7 @@ If Supabase is on a different machine, update the URL accordingly.
 ### App won't start
 - Check PM2 logs: `pm2 logs tryon`
 - Verify environment variables are set
-- Check if port 3000 is available: `lsof -i :3000`
+- Check if the app port is listening: `lsof -i :3002` (or your `PORT` value)
 
 ### Tunnel not working
 - Verify tunnel config: `cloudflared tunnel info <tunnel-name>`

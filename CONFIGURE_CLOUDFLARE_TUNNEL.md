@@ -33,9 +33,9 @@ ingress:
   # Your existing routes (keep these)
   - hostname: cashbook.margies.app  # or whatever you have
     service: http://localhost:3001  # or whatever port
-  # Add the new tryon route
+  # Add the new tryon route (port must match PM2 — see ecosystem.config.js, default 3002)
   - hostname: tryon.margies.app
-    service: http://localhost:3000
+    service: http://localhost:3002
   # Catch-all must be last
   - service: http_status:404
 ```
@@ -109,7 +109,9 @@ sudo systemctl start cloudflared
 - Verify the hostname matches exactly in config
 
 ### App not accessible
-- Make sure PM2 app is running: `pm2 status`
-- Check app is on port 3000: `sudo lsof -i :3000`
-- Test locally: `curl http://localhost:3000`
+- Make sure PM2 app is running: `pm2 status` and `pm2 logs tryon --lines 30`
+- **Tunnel `service:` port must match Next.** This repo’s `ecosystem.config.js` uses `PORT: 3002`. If the tunnel still points at `localhost:3000`, Cloudflare will connect to nothing (or the wrong app).
+- On the server, confirm the listening port: `ss -tlnp | grep -E '3000|3002'` or `grep PORT ~/apps/tryon/ecosystem.config.js`
+- Test locally on that same port: `curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3002/` (use 3000 if that’s what PM2 uses)
+- After editing `config.yml`, restart the tunnel: `sudo systemctl restart cloudflared` (or your run method)
 
